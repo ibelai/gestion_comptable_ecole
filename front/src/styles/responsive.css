@@ -1,0 +1,43 @@
+/* styles/responsive.css */
+
+/* Adapter la taille du texte sur petit écran */
+@media (max-width: 576px) {
+  h4 {
+    font-size: 1.2rem;
+    text-align: center;
+  }
+
+  .table th,
+  .table td {
+    font-size: 0.85rem;
+    padding: 0.25rem;
+  }
+
+  .btn {
+    font-size: 0.85rem;
+  }
+
+  .form-label {
+    font-size: 0.85rem;
+  }
+}
+
+/* Gestion des badges pour éviter les débordements */
+.badge {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Empiler les boutons sur mobile */
+@media (max-width: 768px) {
+  .btn-stack-mobile {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .btn-stack-mobile .btn {
+    width: 100%;
+  }
+}

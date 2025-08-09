@@ -7,7 +7,6 @@ import Login from "./PAGE DE CONNEXION/LoginPage";
 import ClassesPages from "./PAGES/ClassesPages";
 import Paiement from "./PAGES/Paiement";
 import Dashboard from "./PAGES/Dashboard";
-import HistoriquePaiements from "./PAGES/HistoriquePaiements";
 import RegisterUser from "./Components/RegisterUser";
 import UserProfile from "./PAGES/UserProfil";
 import ChangerMotDePasse from "./PAGES/ChangerMotDePasse";
@@ -15,10 +14,10 @@ import MonProfil from "./PAGES/MonProfil";
 import LayoutNav from "./Components/LayoutNav";
 import PrivateRoute from "./Components/PrivateRoutes";
 import MontantsClasses from "./PAGES/MontantClasse";
-import PaiementForm from "./PAGES/PaiementForm";
 import ClassesFrais from "./PAGES/ClassesFrais";
-import ElevesPaiements from "./PAGES/ElevesPaiement";
+
 import ElevesForm from "./PAGES/ElevesForm";
+import './styles/responsive.css';
 
 const App = () => {
   const [user, setUser] = useState(null);
@@ -36,7 +35,7 @@ const App = () => {
           setUser(null);
         } else {
           const parsed = JSON.parse(storedUser);
-          setUser(parsed.user);
+          setUser(parsed);
         }
       } catch (err) {
         localStorage.clear();
@@ -120,22 +119,8 @@ const App = () => {
                   </PrivateRoute>
                 }
               />
-              <Route
-                path="/listePaiements"
-                element={
-                  <PrivateRoute user={user}>
-                    <PaiementForm />
-                  </PrivateRoute>
-                }
-              />
-              <Route
-                path="/history"
-                element={
-                  <PrivateRoute user={user}>
-                    <HistoriquePaiements />
-                  </PrivateRoute>
-                }
-              />
+             
+              
               <Route
                 path="/profil"
                 element={
@@ -162,14 +147,7 @@ const App = () => {
                   </PrivateRoute>
                 }
               />
-              <Route
-                path="/ElevesPaiement"
-                element={
-                  <PrivateRoute user={user} requiredRole="admin">
-                    <ElevesPaiements />
-                  </PrivateRoute>
-                }
-              />
+              
               <Route
                 path="/tableau-de-bord"
                 element={
@@ -186,6 +164,8 @@ const App = () => {
                   </PrivateRoute>
                 }
               />
+
+              
 
               <Route path="*" element={<Navigate to="/" />} />
             </Routes>

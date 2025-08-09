@@ -4,34 +4,57 @@ import axios from "axios";
 import { Modal, Button } from "react-bootstrap";
 
 export default function Paiement() {
-  const { register, handleSubmit, reset, getValues } = useForm();
+  const { register, handleSubmit, reset, getValues } = useForm({
+    defaultValues: {
+      annee_scolaire: "2024-2025", // par ex. prérempli, tu peux le modifier
+    },
+  });
+
   const [showConfirm, setShowConfirm] = useState(false);
   const [eleves, setEleves] = useState([]);
+  const [formDataCache, setFormDataCache] = useState(null);
 
-  // 🧠 Charger les élèves au montage
   useEffect(() => {
     const fetchEleves = async () => {
       try {
-        const res = await axios.get("http://localhost:5000/api/eleves"); // 🔁 adapte l’URL à ton backend
+        const res = await axios.get("http://localhost:5000/api/eleves");
         setEleves(res.data);
       } catch (err) {
         console.error("Erreur chargement élèves :", err);
       }
     };
-
     fetchEleves();
   }, []);
 
-  const handleConfirm = () => setShowConfirm(true);
-  const handleCancel = () => setShowConfirm(false);
+  // Au submit initial, on ouvre juste la confirmation, on stocke les données
+  const handleConfirm = (data) => {
+    setFormDataCache(data);
+    setShowConfirm(true);
+  };
 
+  // Annuler la confirmation
+  const handleCancel = () => {
+    setShowConfirm(false);
+    setFormDataCache(null);
+  };
+
+  // Envoyer le formulaire après confirmation
   const onSubmitConfirmed = async () => {
-    const data = getValues();
+    if (!formDataCache) return;
+
     try {
+      const data = formDataCache;
       const formData = new FormData();
-      for (const key in data) {
-        formData.append(key, data[key]);
-      }
+
+      // Ajout des champs dans FormData (attention fichier)
+      Object.entries(data).forEach(([key, value]) => {
+        // Si c'est un fichier, value est un tableau (fileList)
+        if (key === "recu" && value?.length > 0) {
+          formData.append(key, value[0]); // 1er fichier uniquement
+        } else {
+          formData.append(key, value);
+        }
+      });
 
       await axios.post("http://localhost:5000/api/paiements", formData, {
         headers: { "Content-Type": "multipart/form-data" },
@@ -40,6 +63,7 @@ export default function Paiement() {
       alert("Paiement ajouté avec succès");
       setShowConfirm(false);
       reset();
+      setFormDataCache(null);
     } catch (err) {
       console.error("Erreur ajout paiement", err);
       alert("Erreur lors de l'ajout du paiement");
@@ -48,10 +72,10 @@ export default function Paiement() {
 
   return (
     <div className="container mt-4">
-      <h2>Ajouter un paiement</h2>
+      <h2>Ajouter un paiement </h2>
 
       <form onSubmit={handleSubmit(handleConfirm)} className="row g-3">
-        {/* ✅ Sélecteur élève */}
+        {/* Sélecteur élève */}
         <div className="col-md-6">
           <label className="form-label">Élève</label>
           <select {...register("eleve_id", { required: true })} className="form-select">
@@ -64,15 +88,28 @@ export default function Paiement() {
           </select>
         </div>
 
-        {/* Le reste du formulaire inchangé */}
+        {/* Date de paiement */}
         <div className="col-md-6">
           <label className="form-label">Date de paiement</label>
-          <input type="date" {...register("date_paiement", { required: true })} className="form-control" />
+          <input
+            type="date"
+            {...register("date_paiement", { required: true })}
+            className="form-control"
+          />
         </div>
+
+        {/* Montant payé */}
         <div className="col-md-6">
-          <label className="form-label">Montant payé (€)</label>
-          <input type="number" step="0.01" {...register("montant_paye", { required: true })} className="form-control" />
+          <label className="form-label">Montant payé (FCFA)</label>
+          <input
+            type="number"
+            step="0.01"
+            {...register("montant_paye", { required: true, min: 0.01 })}
+            className="form-control"
+          />
         </div>
+
+        {/* Mode de paiement */}
         <div className="col-md-6">
           <label className="form-label">Mode de paiement</label>
           <select {...register("mode_paiement", { required: true })} className="form-select">
@@ -82,10 +119,18 @@ export default function Paiement() {
             <option value="Virement">Virement</option>
           </select>
         </div>
+
+        {/* Année scolaire */}
         <div className="col-md-6">
           <label className="form-label">Année scolaire</label>
-          <input type="text" {...register("annee_scolaire", { required: true })} className="form-control" />
+          <input
+            type="text"
+            {...register("annee_scolaire", { required: true })}
+            className="form-control"
+          />
         </div>
+
+        {/* Trimestre */}
         <div className="col-md-6">
           <label className="form-label">Trimestre</label>
           <select {...register("trimestre", { required: true })} className="form-select">
@@ -95,13 +140,18 @@ export default function Paiement() {
             <option value="3">3e trimestre</option>
           </select>
         </div>
+
+        {/* Reçu (fichier) */}
         <div className="col-md-12">
           <label className="form-label">Reçu (PDF/image)</label>
-          <input type="file" {...register("recu")} className="form-control" />
+          <input type="file" {...register("recu")} className="form-control" accept=".pdf,image/*" />
         </div>
 
+        {/* Bouton soumission */}
         <div className="col-12">
-          <button type="submit" className="btn btn-primary">Ajouter le paiement</button>
+          <button type="submit" className="btn btn-primary">
+            Ajouter le paiement
+          </button>
         </div>
       </form>
 
@@ -110,9 +160,7 @@ export default function Paiement() {
         <Modal.Header closeButton>
           <Modal.Title>Confirmer l'ajout</Modal.Title>
         </Modal.Header>
-        <Modal.Body>
-          Voulez-vous vraiment enregistrer ce paiement ?
-        </Modal.Body>
+        <Modal.Body>Voulez-vous vraiment enregistrer ce paiement ?</Modal.Body>
         <Modal.Footer>
           <Button variant="secondary" onClick={handleCancel}>
             Annuler

@@ -19,9 +19,10 @@ const commonLinks = [
   { path: "/eleves", label: "Gestion des élèves", icon: <FaUserGraduate /> },
   { path: "/paiements", label: "Paiements", icon: <FaMoneyBillWave /> },
   { path: "/listeEleve", label: "Liste des élèves", icon: <FaList /> },
-   { path: "/listePaiements", label: "Liste des paiements", icon: <FaList /> },
-   { path: "/ElevesPaiement", label: "Liste des eleves paiements", icon: <FaList /> },
-  { path: "/history", label: "Historique des paiements", icon: <FaHistory /> },
+  
+  
+   
+ 
  
   
 ];

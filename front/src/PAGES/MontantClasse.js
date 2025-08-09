@@ -1,203 +1,183 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 
-const API_URL = 'http://localhost:5000/api/classes';
-
-function GestionClassesMontants() {
-  const [form, setForm] = useState({
-    nom: '',
-    montant: '',
-    annee_scolaire: ''
-  });
+export default function MontantsAdmin() {
+  const token = localStorage.getItem('token');
   const [montants, setMontants] = useState([]);
-  const [anneeFilter, setAnneeFilter] = useState('');
-  const [editingId, setEditingId] = useState(null);
-  const [newMontant, setNewMontant] = useState('');
+  const [form, setForm] = useState({
+    id: null,
+    classe: '',
+    annee_scolaire: '',
+    statut_affectation: 'affecté', // valeur par défaut cohérente
+    montant: '',
+  });
+  const [isEditing, setIsEditing] = useState(false);
 
-  const fetchMontants = async () => {
-    try {
-      const response = await axios.get(`${API_URL}/montants`, {
-        params: anneeFilter ? { annee: anneeFilter } : {}
-      });
-      setMontants(response.data);
-    } catch (err) {
-      console.error(err);
-      alert("Erreur lors du chargement des montants");
-    }
-  };
-
+  // Charger la liste
   useEffect(() => {
-    fetchMontants();
-  }, [anneeFilter]);
+    axios.get('http://localhost:5000/api/classes/montants', {
+      headers: { Authorization: `Bearer ${token}` }
+    }).then(res => setMontants(res.data))
+      .catch(err => console.error(err));
+  }, [token]);
 
-  const handleChange = (e) => {
+  // Handle input change
+  const handleChange = e => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const handleCreate = async (e) => {
+  // Ajouter ou modifier
+  const handleSubmit = e => {
     e.preventDefault();
-    try {
-      await axios.post(`${API_URL}/avec-montant`, form);
-      alert("Classe et montant ajoutés !");
-      setForm({ nom: '', montant: '', annee_scolaire: '' });
-      fetchMontants();
-    } catch (err) {
-      console.error(err);
-      alert(err.response?.data?.error || "Erreur lors de l'ajout");
+
+    // Nettoyage et trim des valeurs string
+    const dataToSend = {
+      classe: form.classe.trim(),
+      annee_scolaire: form.annee_scolaire.trim(),
+      statut_affectation: form.statut_affectation.trim(),
+      montant: Number(form.montant),
+    };
+
+    console.log("Valeur statut_affectation envoyée :", dataToSend.statut_affectation);
+
+    if (isEditing) {
+      axios.put(`http://localhost:5000/api/classes/montants/${form.id}`, dataToSend, {
+        headers: { Authorization: `Bearer ${token}` }
+      }).then(res => {
+        setMontants(montants.map(m => (m.id === form.id ? res.data : m)));
+        setForm({ id: null, classe: '', annee_scolaire: '', statut_affectation: 'affecté', montant: '' });
+        setIsEditing(false);
+      }).catch(err => alert('Erreur modification'));
+    } else {
+      axios.post('http://localhost:5000/api/classes/montants', dataToSend, {
+        headers: { Authorization: `Bearer ${token}` }
+      }).then(res => {
+        setMontants([...montants, res.data]);
+        setForm({ id: null, classe: '', annee_scolaire: '', statut_affectation: 'affecté', montant: '' });
+      }).catch(err => {
+        if (err.response && err.response.data && err.response.data.error) {
+          alert('Erreur ajout: ' + err.response.data.error);
+        } else {
+          alert('Erreur ajout inconnue');
+        }
+      });
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("Confirmer la suppression ?")) return;
-    try {
-      await axios.delete(`${API_URL}/montants/${id}`);
-      fetchMontants();
-    } catch (err) {
-      console.error(err);
-      alert("Erreur lors de la suppression");
-    }
+  // Modifier : remplir le formulaire
+  const startEdit = m => {
+    setForm({
+      id: m.id,
+      classe: m.classe || '',
+      annee_scolaire: m.annee_scolaire || '',
+      statut_affectation: m.statut_affectation || 'affecté',
+      montant: m.montant.toString() || '',
+    });
+    setIsEditing(true);
   };
 
-  const handleEdit = (id, montant) => {
-    setEditingId(id);
-    setNewMontant(montant);
-  };
-
-  const handleUpdate = async (id) => {
-    try {
-      await axios.put(`${API_URL}/montants/${id}`, { montant: newMontant });
-      setEditingId(null);
-      fetchMontants();
-    } catch (err) {
-      console.error(err);
-      alert("Erreur lors de la mise à jour");
+  // Supprimer
+  const handleDelete = id => {
+    if (window.confirm('Confirmer la suppression ?')) {
+      axios.delete(`http://localhost:5000/api/classes/montants/${id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      }).then(() => {
+        setMontants(montants.filter(m => m.id !== id));
+      }).catch(() => alert('Erreur suppression'));
     }
   };
 
   return (
     <div className="container mt-4">
-      <h3>Ajouter une classe avec son montant</h3>
-      <form className="row g-3 mb-4" onSubmit={handleCreate}>
-        <div className="col-md-4">
-          <input
-            type="text"
-            name="nom"
-            placeholder="Nom de la classe"
-            className="form-control"
-            value={form.nom}
-            onChange={handleChange}
-            required
-          />
-        </div>
-        <div className="col-md-3">
-          <input
-            type="number"
-            name="montant"
-            placeholder="Montant"
-            className="form-control"
-            value={form.montant}
-            onChange={handleChange}
-            required
-          />
-        </div>
-        <div className="col-md-3">
-          <input
-            type="text"
-            name="annee_scolaire"
-            placeholder="Année scolaire (ex: 2024-2025)"
-            className="form-control"
-            value={form.annee_scolaire}
-            onChange={handleChange}
-            required
-          />
-        </div>
-        <div className="col-md-2">
-          <button type="submit" className="btn btn-success w-100">Ajouter</button>
+      <h3>Gestion des montants par classe</h3>
+
+      <form onSubmit={handleSubmit} className="mb-4">
+        <div className="row g-3 align-items-end">
+          <div className="col-md-3">
+            <label>Classe</label>
+            <input
+              type="text"
+              name="classe"
+              className="form-control"
+              value={form.classe}
+              onChange={handleChange}
+              required
+              placeholder="Ex: 6e, 5e..."
+            />
+          </div>
+          <div className="col-md-3">
+            <label>Année scolaire</label>
+            <input
+              type="text"
+              name="annee_scolaire"
+              className="form-control"
+              value={form.annee_scolaire}
+              onChange={handleChange}
+              required
+              placeholder="2024-2025"
+            />
+          </div>
+          <div className="col-md-3">
+            <label>Statut d'affectation</label>
+            <select
+              name="statut_affectation"
+              className="form-select"
+              value={form.statut_affectation}
+              onChange={handleChange}
+              required
+            >
+              <option value="">--Choisir--</option>
+              <option value="affecté">Affecté (État)</option>
+              <option value="non affecté">Non Affecté</option>
+            </select>
+          </div>
+          <div className="col-md-2">
+            <label>Montant (FCFA)</label>
+            <input
+              type="number"
+              name="montant"
+              className="form-control"
+              value={form.montant}
+              onChange={handleChange}
+              required
+              min="0"
+            />
+          </div>
+          <div className="col-md-1">
+            <button type="submit" className="btn btn-success w-100">
+              {isEditing ? 'Modifier' : 'Ajouter'}
+            </button>
+          </div>
         </div>
       </form>
 
-      <div className="mb-3">
-        <label className="form-label">Filtrer par année scolaire :</label>
-        <input
-          type="text"
-          className="form-control"
-          placeholder="2024-2025"
-          value={anneeFilter}
-          onChange={(e) => setAnneeFilter(e.target.value)}
-        />
-      </div>
-
-      <h5>Liste des classes avec montants</h5>
       <table className="table table-bordered">
         <thead className="table-light">
           <tr>
             <th>Classe</th>
-            <th>Montant</th>
             <th>Année scolaire</th>
+            <th>Statut affectation</th>
+            <th>Montant (FCFA)</th>
             <th>Actions</th>
           </tr>
         </thead>
         <tbody>
-          {montants.map((m) => (
+          {montants.length > 0 ? montants.map(m => (
             <tr key={m.id}>
               <td>{m.classe}</td>
-              <td>
-                {editingId === m.id ? (
-                  <input
-                    type="number"
-                    className="form-control"
-                    value={newMontant}
-                    onChange={(e) => setNewMontant(e.target.value)}
-                  />
-                ) : (
-                  `${m.montant} FCFA`
-                )}
-              </td>
               <td>{m.annee_scolaire}</td>
+              <td>{m.statut_affectation}</td>
+              <td>{m.montant}</td>
               <td>
-                {editingId === m.id ? (
-                  <>
-                    <button
-                      className="btn btn-sm btn-success me-2"
-                      onClick={() => handleUpdate(m.id)}
-                    >
-                      Sauvegarder
-                    </button>
-                    <button
-                      className="btn btn-sm btn-secondary"
-                      onClick={() => setEditingId(null)}
-                    >
-                      Annuler
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <button
-                      className="btn btn-sm btn-primary me-2"
-                      onClick={() => handleEdit(m.id, m.montant)}
-                    >
-                      Modifier
-                    </button>
-                    <button
-                      className="btn btn-sm btn-danger"
-                      onClick={() => handleDelete(m.id)}
-                    >
-                      Supprimer
-                    </button>
-                  </>
-                )}
+                <button className="btn btn-primary btn-sm me-2" onClick={() => startEdit(m)}>Modifier</button>
+                <button className="btn btn-danger btn-sm" onClick={() => handleDelete(m.id)}>Supprimer</button>
               </td>
             </tr>
-          ))}
-          {montants.length === 0 && (
-            <tr>
-              <td colSpan="4" className="text-center text-muted">Aucun montant trouvé</td>
-            </tr>
+          )) : (
+            <tr><td colSpan="5" className="text-center">Aucun montant configuré</td></tr>
           )}
         </tbody>
       </table>
     </div>
   );
 }
-
-export default GestionClassesMontants;
