@@ -5,7 +5,7 @@ const { montantSchema, montantUpdateSchema } = require('../validation/montantsSc
 
 // === ROUTES POUR LES CLASSES ===
 
-// GET toutes les classes
+// GET toutes les classes (simple liste)
 router.get('/', async (req, res) => {
   try {
     const [rows] = await pool.query('SELECT * FROM classes ORDER BY nom');
@@ -16,63 +16,68 @@ router.get('/', async (req, res) => {
   }
 });
 
-// POST une nouvelle classe
-router.post('/avec-montant', async (req, res) => {
-  const { nom, montant, annee_scolaire } = req.body;
-  const conn = await pool.getConnection(); // ✅ correction ici
+// POST une nouvelle classe avec montant (transaction)
+router.post('/classes/avec-montant', async (req, res) => {
+  const { nom, montant, annee_scolaire, statut_affectation } = req.body;
+  const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
 
-    // 1. Insérer la classe
+    // Insertion classe
     const [resultClass] = await conn.query(
       'INSERT INTO classes (nom) VALUES (?)',
       [nom]
     );
 
-    const classeNom = nom;
-
-    // 2. Insérer le montant dans montants_classes
+    // Insertion montant lié à la classe
     await conn.query(
-      'INSERT INTO montants_classes (classe, montant, annee_scolaire) VALUES (?, ?, ?)',
-      [classeNom, montant, annee_scolaire]
+      `INSERT INTO montants_classes (classe, montant, annee_scolaire, statut_affectation) VALUES (?, ?, ?, ?)`,
+      [nom, montant, annee_scolaire, statut_affectation]
     );
 
     await conn.commit();
-    conn.release();
-
     res.status(201).json({ message: 'Classe et montant ajoutés avec succès' });
   } catch (err) {
     await conn.rollback();
-    conn.release();
     console.error(err);
     if (err.code === 'ER_DUP_ENTRY') {
       return res.status(400).json({ error: 'Cette classe ou ce montant existe déjà.' });
     }
     res.status(500).json({ error: 'Erreur serveur' });
+  } finally {
+    conn.release();
   }
 });
 
-
-
-// === ROUTES POUR LES MONTANTS DES CLASSES ===
-
-// GET montants (filtrable par année scolaire)
+// GET montants avec filtre année et statut_affectation
 router.get('/montants', async (req, res) => {
-  const { annee } = req.query;
+  const { annee, statut } = req.query;
+  const conn = await pool.getConnection();
   try {
-    const conn = await pool.getConnection();
-    let query = 'SELECT * FROM montants_classes';
+    let query = 'SELECT * FROM montants_classes WHERE 1=1';
     const params = [];
+
     if (annee) {
-      query += ' WHERE annee_scolaire = ?';
+      query += ' AND annee_scolaire = ?';
       params.push(annee);
     }
+
+    if (statut) {
+      if (statut === 'affecté' || statut === 'non affecté') {
+        query += ' AND statut_affectation = ?';
+        params.push(statut);
+      } else {
+        return res.status(400).json({ error: 'Statut affectation invalide.' });
+      }
+    }
+
     const [rows] = await conn.query(query, params);
-    conn.release();
     res.json(rows);
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Erreur serveur' });
+  } finally {
+    conn.release();
   }
 });
 
@@ -82,18 +87,18 @@ router.post('/montants', async (req, res) => {
     const { error, value } = montantSchema.validate(req.body);
     if (error) return res.status(400).json({ error: error.details[0].message });
 
-    const { classe, montant, annee_scolaire } = value;
+    const { classe, montant, annee_scolaire, statut_affectation } = value;
 
     const conn = await pool.getConnection();
 
     const [result] = await conn.query(
-      `INSERT INTO montants_classes (classe, montant, annee_scolaire) VALUES (?, ?, ?)`,
-      [classe, montant, annee_scolaire]
+      `INSERT INTO montants_classes (classe, montant, annee_scolaire, statut_affectation) VALUES (?, ?, ?, ?)`,
+      [classe, montant, annee_scolaire, statut_affectation]
     );
 
     conn.release();
 
-    res.status(201).json({ id: result.insertId, classe, montant, annee_scolaire });
+    res.status(201).json({ id: result.insertId, classe, montant, annee_scolaire, statut_affectation });
   } catch (err) {
     console.error(err);
     if (err.code === 'ER_DUP_ENTRY') {
@@ -103,7 +108,7 @@ router.post('/montants', async (req, res) => {
   }
 });
 
-// PUT mettre à jour un montant
+// PUT mise à jour montant
 router.put('/montants/:id', async (req, res) => {
   try {
     const { error, value } = montantUpdateSchema.validate(req.body);
@@ -130,7 +135,7 @@ router.put('/montants/:id', async (req, res) => {
   }
 });
 
-// DELETE un montant
+// DELETE montant
 router.delete('/montants/:id', async (req, res) => {
   try {
     const { id } = req.params;
