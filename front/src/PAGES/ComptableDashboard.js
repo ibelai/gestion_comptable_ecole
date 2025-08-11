@@ -38,7 +38,8 @@ function ComptableDashboard() {
   }));
 
   return (
-    <div className="container mt-4">
+   <div className="container-fluid mt-4 px-4">
+
       <h2 className="mb-4">Tableau de bord Comptable</h2>
 
       <div className="row">

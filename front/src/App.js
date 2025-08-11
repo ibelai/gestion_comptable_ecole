@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
-import TopNavbar from "./Components/TopNavbar";
-import Sidebar from "./Components/Sidebar";
+import FullNavbar from "./Components/FullNavbar"; // ✅ nouvelle navbar fusionnée
 import ElevesList from "./PAGES/ElevesList";
 import Login from "./PAGE DE CONNEXION/LoginPage";
 import ClassesPages from "./PAGES/ClassesPages";
@@ -11,13 +10,12 @@ import RegisterUser from "./Components/RegisterUser";
 import UserProfile from "./PAGES/UserProfil";
 import ChangerMotDePasse from "./PAGES/ChangerMotDePasse";
 import MonProfil from "./PAGES/MonProfil";
-import LayoutNav from "./Components/LayoutNav";
 import PrivateRoute from "./Components/PrivateRoutes";
 import MontantsClasses from "./PAGES/MontantClasse";
-import ClassesFrais from "./PAGES/ClassesFrais";
 
 import ElevesForm from "./PAGES/ElevesForm";
 import './styles/responsive.css';
+import './App.css'; // ✅ pour le padding top
 
 const App = () => {
   const [user, setUser] = useState(null);
@@ -42,7 +40,6 @@ const App = () => {
         setUser(null);
       }
     } else {
-      // IMPORTANT : on précise que s'il n'y a pas de token ou user, on est déconnecté
       setUser(null);
     }
   }, []);
@@ -64,19 +61,15 @@ const App = () => {
         </Routes>
       ) : (
         <>
-          <LayoutNav user={user} onLogout={handleLogout} />
-          <Sidebar role={user.role} />
-          <main className="main-content">
+          {/* ✅ Nouvelle navbar fusionnée */}
+          <FullNavbar user={user} onLogout={handleLogout} />
+
+          {/* ✅ Contenu principal avec padding */}
+          <main className="main-content container-fluid">
             <Routes>
               <Route
                 path="/"
-                element={
-                  isAdmin ? (
-                    <Navigate to="/tableau-de-bord" />
-                  ) : (
-                    <Navigate to="/paiements" />
-                  )
-                }
+                element={<Navigate to="/tableau-de-bord" />}
               />
 
               <Route
@@ -119,8 +112,6 @@ const App = () => {
                   </PrivateRoute>
                 }
               />
-             
-              
               <Route
                 path="/profil"
                 element={
@@ -130,15 +121,8 @@ const App = () => {
                 }
               />
 
-              {/* Routes réservées aux admins */}
-              <Route
-                path="/classes"
-                element={
-                  <PrivateRoute user={user} requiredRole="admin">
-                    <ClassesFrais />
-                  </PrivateRoute>
-                }
-              />
+              {/* Routes admin */}
+             
               <Route
                 path="/classesMontant"
                 element={
@@ -147,7 +131,6 @@ const App = () => {
                   </PrivateRoute>
                 }
               />
-              
               <Route
                 path="/tableau-de-bord"
                 element={
@@ -164,8 +147,6 @@ const App = () => {
                   </PrivateRoute>
                 }
               />
-
-              
 
               <Route path="*" element={<Navigate to="/" />} />
             </Routes>

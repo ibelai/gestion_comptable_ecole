@@ -44,3 +44,84 @@
     transform: rotate(360deg);
   }
 }
+/* Évite que le contenu passe sous la navbar fixe */
+body, html {
+  height: 100%;
+  margin: 0;
+}
+
+.main-content {
+  padding-top: 80px; /* pour éviter que la navbar chevauche */
+  padding-left: 20px;
+  padding-right: 20px;
+  min-height: calc(100vh - 80px); /* hauteur totale - navbar */
+  background-color: #f8f9fa; /* fond clair optionnel */
+}
+/* Navbar premium */
+.custom-navbar {
+  background: rgba(33, 37, 41, 0.95) !important;
+  backdrop-filter: blur(6px);
+  padding-top: 1rem;
+  padding-bottom: 1rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Logo */
+.navbar-brand-custom {
+  font-weight: 700;
+  font-size: 1.2rem;
+}
+
+/* Liens centrés et espacés */
+.navbar-links .nav-item-link {
+  font-size: 1.05rem;
+  font-weight: 500;
+  margin: 0 20px;
+  color: #f8f9fa !important;
+  position: relative;
+  text-decoration: none;
+  transition: color 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Icônes plus grandes */
+.nav-icon {
+  font-size: 1.3rem;
+}
+
+/* Effet hover animé */
+.navbar-links .nav-item-link::after {
+  content: "";
+  position: absolute;
+  bottom: -6px;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background-color: #ffc107;
+  transition: width 0.3s ease;
+}
+
+.navbar-links .nav-item-link:hover {
+  color: #ffc107 !important;
+}
+
+.navbar-links .nav-item-link:hover::after {
+  width: 100%;
+}
+
+/* État actif */
+.navbar-links .nav-item-link.active {
+  color: #ffc107 !important;
+}
+
+.navbar-links .nav-item-link.active::after {
+  width: 100%;
+}
+
+/* Décalage du contenu pour éviter qu'il soit sous la navbar */
+.main-content {
+  padding-top: 90px; /* hauteur navbar */
+}
+

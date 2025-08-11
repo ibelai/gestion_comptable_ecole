@@ -1,36 +1,12 @@
-body {
+body, html {
+  height: 100%;
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
-}
-body {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-
-.sidebar {
-  width: 220px;
-  position: fixed;
-  top: 56px; /* même hauteur que la navbar */
-  left: 0;
-  bottom: 0;
-  background-color: #343a40;
-  padding-top: 20px;
-  overflow-y: auto;
-  z-index: 1000;
 }
 
 .main-content {
-  margin-left: 220px;
-  margin-top: 56px;
-  padding: 20px;
+  padding-top: 80px; /* pour éviter que la navbar chevauche */
+  padding-left: 20px;
+  padding-right: 20px;
+  min-height: calc(100vh - 80px); /* hauteur totale - navbar */
+  background-color: #f8f9fa; /* fond clair optionnel */
 }

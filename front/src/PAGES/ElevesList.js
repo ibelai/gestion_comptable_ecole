@@ -197,7 +197,8 @@ export default function ElevesList() {
   };
 
   return (
-    <div className="container mt-4">
+    <div className="container-fluid mt-4 px-4">
+
       <div className="card shadow-sm">
         <div className="card-header bg-primary text-white">
           <h4>Gestion des élèves & paiements (Étape {etape}/2)</h4>

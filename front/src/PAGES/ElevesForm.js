@@ -148,7 +148,8 @@ const ElevesForm = () => {
   const totalRestant = eleves.reduce((sum, e) => sum + Number(e.montant_restant || 0), 0);
 
   return (
-    <div className="container mt-4">
+   <div className="container-fluid mt-4 px-4">
+
       <h4 className="mb-4">Liste des élèves inscrits</h4>
 
       {/* Filtres */}
