@@ -42,4 +42,7 @@ app.use("/api/dashboard", Dashboard);
 
 
 // Démarrer le serveur sans Sequelize
-app.listen(5000, () => console.log("✅ Serveur démarré sur le port 5000"));
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => {
+  console.log(`Serveur démarré sur le port ${PORT}`);
+});
