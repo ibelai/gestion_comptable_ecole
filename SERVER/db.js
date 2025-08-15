@@ -6,7 +6,7 @@ const db = mysql.createPool({
   user: process.env.DB_USER,        // depuis Render Environment Variables
   password: process.env.DB_PASSWORD,// depuis Render Environment Variables
   database: process.env.DB_NAME,
-  port: process.env.PORT || 5000,  // depuis Render Environment Variables
+    port: 3306,// depuis Render Environment Variables
   ssl: { rejectUnauthorized: true } // requis si tu utilises PlanetScale ou autre DB cloud
 });
 
