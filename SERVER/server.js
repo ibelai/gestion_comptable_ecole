@@ -1,6 +1,10 @@
 require("dotenv").config();
 const path = require('path');
-
+const dbName = process.env.DB_NAME;
+const dbUser = process.env.DB_USER;
+const dbPassword = process.env.DB_PASSWORD;
+const dbHost = process.env.DB_HOST;
+const jwtSecret = process.env.JWT_SECRET;
 const express = require("express");
 const cors = require("cors");
 const authRoutes = require("./routes/authRoutes");
