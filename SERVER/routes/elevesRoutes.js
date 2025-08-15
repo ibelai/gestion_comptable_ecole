@@ -183,18 +183,22 @@ router.put('/:id', verifyToken, authorizeRoles('admin', 'comptable'), async (req
     res.status(500).json({ message: "Erreur serveur lors de la mise à jour de l'élève." });
   }
 });
-// ✅ Supprimer un élève (admin uniquement)
+// ✅ Supprimer un élève (admin uniquement) avec suppression des paiements liés
 router.delete('/:id', verifyToken, authorizeRoles('admin'), async (req, res) => {
   try {
     const { id } = req.params;
 
+    // Supprimer les paiements liés à cet élève
+    await db.execute(`DELETE FROM paiements WHERE eleve_id = ?`, [id]);
+
+    // Supprimer l'élève
     const [result] = await db.execute(`DELETE FROM eleves WHERE id = ?`, [id]);
 
     if (result.affectedRows === 0) {
       return res.status(404).json({ message: "Élève non trouvé." });
     }
 
-    res.json({ message: "Élève supprimé avec succès." });
+    res.json({ message: "Élève et paiements supprimés avec succès." });
   } catch (error) {
     console.error("Erreur suppression élève :", error);
     res.status(500).json({ message: "Erreur serveur lors de la suppression de l'élève." });

@@ -8,6 +8,7 @@ const db = mysql.createPool({
   user: 'bamba',
   password: '12345678',
   database: 'gestion_comptable', // ici
+   ssl: { rejectUnauthorized: true } // requis pour PlanetScale
 });
 
 

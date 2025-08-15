@@ -61,7 +61,7 @@ export default function ElevesList() {
     const doc = new jsPDF();
 
     const img = new Image();
-    img.src = '/logo.png';
+    img.src = '/logo.jpg';
 
     img.onload = () => {
       doc.addImage(img, 'PNG', 10, 10, 30, 30);

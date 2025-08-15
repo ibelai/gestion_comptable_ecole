@@ -37,9 +37,20 @@ const FullNavbar = ({ user, onLogout }) => {
       expanded={expanded}
     >
       <Container fluid>
-        <Navbar.Brand as={Link} to="/" onClick={() => setExpanded(false)}>
-          Gestion Comptable École
+        {/* Logo */}
+        <Navbar.Brand
+          as={Link}
+          to="/"
+          onClick={() => setExpanded(false)}
+        >
+          <img
+            src="/logo.jpg" // Mets ton logo dans front/public/
+            alt="Logo"
+            height="40"
+            className="d-inline-block align-top"
+          />
         </Navbar.Brand>
+
         <Navbar.Toggle
           aria-controls="navbar-nav"
           onClick={() => setExpanded(expanded ? false : true)}
@@ -75,7 +86,6 @@ const FullNavbar = ({ user, onLogout }) => {
               >
                 {user?.role === "admin" && (
                   <>
-                   
                     <NavDropdown.Item as={Link} to="/classesMontant" onClick={() => setExpanded(false)}>
                       <FaMoneyBillWave className="me-2" /> Gestion des classes et des montants
                     </NavDropdown.Item>
