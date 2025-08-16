@@ -11,17 +11,7 @@ const dbPassword = process.env.DB_PASSWORD;
 const dbName = process.env.DB_NAME;
 const jwtSecret = process.env.JWT_SECRET;
 
-// Connexion MySQL
-const mysql = require('mysql2/promise');
-const db = mysql.createPool({
-  host: dbHost,
-  user: dbUser,
-  password: dbPassword,
-  database: dbName,
-  port: 44996, // port MySQL standard
-  ssl: { rejectUnauthorized: true } // nécessaire si DB cloud (PlanetScale)
-});
-module.exports = db;
+
 
 // Initialisation d'Express
 const app = express();

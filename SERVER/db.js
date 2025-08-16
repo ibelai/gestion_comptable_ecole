@@ -1,13 +1,14 @@
-const mysql = require('mysql2/promise');
+const mysql = require("mysql2/promise");
 
-// Récupération des variables d'environnement
 const db = mysql.createPool({
-  host: process.env.DB_HOST,        // depuis Render Environment Variables
-  user: process.env.DB_USER,        // depuis Render Environment Variables
-  password: process.env.DB_PASSWORD,// depuis Render Environment Variables
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
-    port: 3306,// depuis Render Environment Variables
-  ssl: { rejectUnauthorized: true } // requis si tu utilises PlanetScale ou autre DB cloud
+  port: process.env.DB_PORT, // Railway donne un port spécifique
+  ssl: {
+    rejectUnauthorized: false // avec Railway, il faut souvent mettre false
+  }
 });
 
 module.exports = db;
