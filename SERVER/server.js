@@ -62,7 +62,7 @@ app.use("/api/paiements", paiementsRoutes);
 app.use("/api/dashboard", Dashboard);
 
 // Démarrer le serveur Express
-const port = process.env.PORT
+const port = process.env.PORT || 1000
 app.listen(port, () => {
   console.log(`Serveur démarré sur le port ${port}`);
 });
