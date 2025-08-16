@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 
 export default function ElevesPaiements() {
+  const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:1000';
   const [eleves, setEleves] = useState([]);
   const [filtres, setFiltres] = useState({
     classe_id: '',
@@ -15,7 +16,7 @@ export default function ElevesPaiements() {
 
   async function fetchElevesPaiements() {
     try {
-      const res = await axios.get('http://localhost:5000/api/eleves/eleves-paiements', { params: filtres });
+      const res = await axios.get(`${API_URL}/api/eleves/eleves-paiements`, { params: filtres });
       setEleves(res.data);
     } catch {
       alert('Erreur chargement données');

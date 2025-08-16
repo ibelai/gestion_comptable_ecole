@@ -6,7 +6,7 @@ import 'jspdf-autotable';
 export default function ElevesList() {
   const [etape, setEtape] = useState(1);
   const token = localStorage.getItem('token');
-
+const API_URL = process.env.REACT_APP_API_URL;
   const [matricule, setMatricule] = useState(''); // <-- Nouveau
   const [nom, setNom] = useState('');
   const [prenom, setPrenom] = useState('');
@@ -28,8 +28,8 @@ export default function ElevesList() {
     const fetchData = async () => {
       try {
         const [resClasses, resMontants] = await Promise.all([
-          axios.get('http://localhost:5000/api/classes'),
-          axios.get('http://localhost:5000/api/classes/montants')
+          axios.get(`${API_URL}/api/classes`),
+          axios.get(`${API_URL}/api/classes/montants`)
         ]);
         setClasses(resClasses.data);
         setMontantsClasses(resMontants.data);
@@ -130,7 +130,7 @@ export default function ElevesList() {
       }
 
       try {
-       const resEleve = await axios.post('http://localhost:5000/api/eleves', {
+       const resEleve = await axios.post(`${API_URL}/api/eleves`, {
   matricule: matricule.trim(),
   nom: nom.trim(),
   prenom: prenom.trim(),
@@ -144,7 +144,7 @@ export default function ElevesList() {
 });
 
 
-        await axios.post('http://localhost:5000/api/paiements', {
+        await axios.post(`${API_URL}/api/paiements`, {
           eleve_id: resEleve.data.id,
           montant_paye: montantPayeNum,
           date_paiement: datePaiement,
