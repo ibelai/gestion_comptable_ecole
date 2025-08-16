@@ -18,7 +18,7 @@ const db = mysql.createPool({
   user: dbUser,
   password: dbPassword,
   database: dbName,
-  port: 3306, // port MySQL standard
+  port: 44996, // port MySQL standard
   ssl: { rejectUnauthorized: true } // nécessaire si DB cloud (PlanetScale)
 });
 module.exports = db;
