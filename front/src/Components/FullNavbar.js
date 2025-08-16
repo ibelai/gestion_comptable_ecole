@@ -14,6 +14,7 @@ import {
 } from "react-icons/fa";
 
 const FullNavbar = ({ user, onLogout }) => {
+const API_URL = process.env.REACT_APP_API_URL;
   const location = useLocation();
   const [expanded, setExpanded] = useState(false);
 
@@ -24,7 +25,7 @@ const FullNavbar = ({ user, onLogout }) => {
   ];
 
   const avatarUrl = user?.avatar
-    ? `http://localhost:5000/uploads/avatars/${user.avatar}`
+    ? `${API_URL}/uploads/avatars/${user.avatar}`
     : "/default-avatar.png";
 
   return (
