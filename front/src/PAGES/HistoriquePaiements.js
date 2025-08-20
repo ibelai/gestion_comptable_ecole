@@ -12,15 +12,15 @@ const HistoriquePaiements = () => {
   const [paiements, setPaiements] = useState([]);
   const [totalPaye, setTotalPaye] = useState(0);
   const [montantFrais, setMontantFrais] = useState(0);
-
+const API_URL = process.env.REACT_APP_API_URL;
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const eleveRes = await axios.get(`http://localhost:5000/api/eleves/${id}`);
+        const eleveRes = await axios.get(`${API_URL}/api/eleves/${id}`);
         setEleve(eleveRes.data);
         setMontantFrais(parseFloat(eleveRes.data.montant_frais) || 0);
 
-        const paiementRes = await axios.get(`http://localhost:5000/api/paiements/eleve/${id}`);
+        const paiementRes = await axios.get(`${API_URL}/api/paiements/eleve/${id}`);
         setPaiements(paiementRes.data);
 
         const total = paiementRes.data.reduce((sum, p) => sum + parseFloat(p.montant || 0), 0);

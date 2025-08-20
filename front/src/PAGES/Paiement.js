@@ -9,7 +9,7 @@ export default function Paiement() {
       annee_scolaire: "2024-2025", // par ex. prérempli, tu peux le modifier
     },
   });
-
+const API_URL = process.env.REACT_APP_API_URL;
   const [showConfirm, setShowConfirm] = useState(false);
   const [eleves, setEleves] = useState([]);
   const [formDataCache, setFormDataCache] = useState(null);
@@ -17,7 +17,7 @@ export default function Paiement() {
   useEffect(() => {
     const fetchEleves = async () => {
       try {
-        const res = await axios.get("http://localhost:5000/api/eleves");
+        const res = await axios.get(`${API_URL}/api/eleves`);
         setEleves(res.data);
       } catch (err) {
         console.error("Erreur chargement élèves :", err);
@@ -56,7 +56,7 @@ export default function Paiement() {
         }
       });
 
-      await axios.post("http://localhost:5000/api/paiements", formData, {
+      await axios.post(`${API_URL}/api/paiements`, formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
 

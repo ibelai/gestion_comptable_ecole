@@ -12,10 +12,10 @@ export default function PaiementSoldeModal({ eleveId, show, onClose }) {
   const [message, setMessage] = useState('');
   const [chargement, setChargement] = useState(false);
   const anneeScolaire = "2024-2025";
-
+const API_URL = process.env.REACT_APP_API_URL;
   useEffect(() => {
     if (!eleveId || !show) return;
-    axios.get(`http://localhost:5000/api/eleves/${eleveId}/solde?annee_scolaire=${anneeScolaire}`, {
+    axios.get(`${API_URL}/api/eleves/${eleveId}/solde?annee_scolaire=${anneeScolaire}`, {
       headers: { Authorization: `Bearer ${token}` }
     })
     .then(res => setEleve(res.data))
@@ -47,7 +47,7 @@ export default function PaiementSoldeModal({ eleveId, show, onClose }) {
     const numeroRecu = recu.trim() || genererNumeroRecu();
 
     try {
-      await axios.post(`http://localhost:5000/api/paiements`, {
+      await axios.post(`${API_URL}/api/paiements`, {
         eleve_id: eleveId,
         montant_paye: montantFloat,
         mode_paiement: modePaiement,
@@ -75,7 +75,7 @@ export default function PaiementSoldeModal({ eleveId, show, onClose }) {
       setRecu('');
       setMessage("Paiement effectué avec succès !");
 
-      const updated = await axios.get(`http://localhost:5000/api/eleves/${eleveId}/solde?annee_scolaire=${anneeScolaire}`, {
+      const updated = await axios.get(`${API_URL}/api/eleves/${eleveId}/solde?annee_scolaire=${anneeScolaire}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setEleve(updated.data);

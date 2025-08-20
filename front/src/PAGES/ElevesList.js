@@ -6,8 +6,8 @@ import 'jspdf-autotable';
 export default function ElevesList() {
   const [etape, setEtape] = useState(1);
   const token = localStorage.getItem('token');
-
-  const [matricule, setMatricule] = useState(''); // <-- Nouveau
+const API_URL = process.env.REACT_APP_API_URL;
+  const [matricule, setMatricule] = useState('');
   const [nom, setNom] = useState('');
   const [prenom, setPrenom] = useState('');
   const [dateNaissance, setDateNaissance] = useState('');
@@ -15,21 +15,50 @@ export default function ElevesList() {
   const [classeId, setClasseId] = useState('');
   const [anneeScolaire, setAnneeScolaire] = useState('');
   const [trimestre, setTrimestre] = useState('');
-  const [montantPaye, setMontantPaye] = useState('');
   const [datePaiement, setDatePaiement] = useState('');
   const [modePaiement, setModePaiement] = useState('');
-  const [montantDu, setMontantDu] = useState(0);
   const [statutAffectation, setStatutAffectation] = useState('');
+
+  // Nouveaux champs pour les frais
+  const [fraisScolaire, setFraisScolaire] = useState(17500);
+  const [droitExamen, setDroitExamen] = useState(0);
+  const [papiersRames, setPapiersRames] = useState(0);
+  const [montantDu, setMontantDu] = useState(0); // Montant basé sur classe et statut
+  
+  // Montants payés pour chaque type de frais
+  const [montantPayeFraisScolaire, setMontantPayeFraisScolaire] = useState('');
+  const [montantPayeClasse, setMontantPayeClasse] = useState('');
+  const [montantPayeDroitExamen, setMontantPayeDroitExamen] = useState('');
+  const [montantPayePapiersRames, setMontantPayePapiersRames] = useState('');
 
   const [classes, setClasses] = useState([]);
   const [montantsClasses, setMontantsClasses] = useState([]);
+
+  // Fonction pour vérifier si c'est une classe d'examen et retourner le montant
+  const getDroitExamen = (classeNom) => {
+    if (!classeNom) return 0;
+    
+    const nomLower = classeNom.toLowerCase();
+    
+    // Terminale = 6000 FCFA
+    if (nomLower.includes('terminale') || nomLower.includes('tle')) {
+      return 6000;
+    }
+    
+    // 3ème = 3000 FCFA
+    if (nomLower.includes('3ème') || nomLower.includes('3eme')) {
+      return 3000;
+    }
+    
+    return 0; // Pas de droit d'examen pour les autres classes
+  };
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         const [resClasses, resMontants] = await Promise.all([
-          axios.get('http://localhost:5000/api/classes'),
-          axios.get('http://localhost:5000/api/classes/montants')
+          axios.get(`${API_URL}/api/classes`),
+          axios.get(`${API_URL}/api/classes/montants`)
         ]);
         setClasses(resClasses.data);
         setMontantsClasses(resMontants.data);
@@ -40,6 +69,7 @@ export default function ElevesList() {
     fetchData();
   }, []);
 
+  // Calcul du montant dû selon la classe et le statut
   useEffect(() => {
     if (!classeId || !anneeScolaire || !statutAffectation) {
       setMontantDu(0);
@@ -57,11 +87,75 @@ export default function ElevesList() {
     setMontantDu(montant ? parseInt(montant.montant, 10) : 0);
   }, [classeId, anneeScolaire, statutAffectation, classes, montantsClasses]);
 
+  // Mise à jour automatique des frais selon la classe
+  useEffect(() => {
+    if (classeId) {
+      const classeNom = classes.find(c => c.id === parseInt(classeId))?.nom;
+      
+      // Droit d'examen selon la classe
+      const montantDroitExamen = getDroitExamen(classeNom);
+      setDroitExamen(montantDroitExamen);
+      
+      if (montantDroitExamen === 0) {
+        setMontantPayeDroitExamen(''); // Reset si pas classe d'examen
+      }
+      
+      // Papiers rames pour tous (montant exemple, à ajuster)
+      setPapiersRames(2500);
+    } else {
+      // Reset si aucune classe sélectionnée
+      setDroitExamen(0);
+      setPapiersRames(2500);
+      setMontantPayeClasse('');
+      setMontantPayeDroitExamen('');
+      setMontantPayePapiersRames('');
+    }
+  }, [classeId, classes]);
+
+  const calculerTotalDu = () => {
+    return fraisScolaire + montantDu + droitExamen + papiersRames;
+  };
+
+  const calculerTotalPaye = () => {
+    const frais = parseInt(montantPayeFraisScolaire || 0, 10);
+    const classe = parseInt(montantPayeClasse || 0, 10);
+    const examen = parseInt(montantPayeDroitExamen || 0, 10);
+    const papiers = parseInt(montantPayePapiersRames || 0, 10);
+    return frais + classe + examen + papiers;
+  };
+
+  const calculerResteAPayer = () => {
+    return calculerTotalDu() - calculerTotalPaye();
+  };
+
+  const genererMessageParents = () => {
+    const reste = calculerResteAPayer();
+    if (reste <= 0) {
+      return "Tous les frais sont soldés. Merci !";
+    }
+    
+    let message = `Cher parent, il reste ${reste} FCFA à payer pour ${nom} ${prenom}.\n\nDétails des impayés :\n`;
+    
+    const fraisRestant = fraisScolaire - parseInt(montantPayeFraisScolaire || 0, 10);
+    const classeRestant = montantDu - parseInt(montantPayeClasse || 0, 10);
+    const examenRestant = droitExamen - parseInt(montantPayeDroitExamen || 0, 10);
+    const papiersRestant = papiersRames - parseInt(montantPayePapiersRames || 0, 10);
+    
+    if (fraisRestant > 0) message += `- Frais scolaire : ${fraisRestant} FCFA\n`;
+    if (classeRestant > 0) message += `- Frais de classe : ${classeRestant} FCFA\n`;
+    if (examenRestant > 0) message += `- Droit d'examen : ${examenRestant} FCFA\n`;
+    if (papiersRestant > 0) message += `- Papiers/Rames : ${papiersRestant} FCFA\n`;
+    
+    message += `\nMerci de procéder au paiement dans les plus brefs délais.\n\nCordialement,\nGroupe Scolaire LONNY-ROSE`;
+    
+    return message;
+  };
+
   const genererRecu = (paiement) => {
     const doc = new jsPDF();
 
     const img = new Image();
-    img.src = '/logo.png';
+    img.src = '/logo.jpg';
 
     img.onload = () => {
       doc.addImage(img, 'PNG', 10, 10, 30, 30);
@@ -74,7 +168,7 @@ export default function ElevesList() {
       doc.setFont("helvetica", "normal");
       doc.text("Reçu de paiement", 105, 30, null, null, 'center');
 
-      doc.text(`Matricule : ${paiement.matricule}`, 10, 50);           // <-- affichage matricule reçu
+      doc.text(`Matricule : ${paiement.matricule}`, 10, 50);
       doc.text(`Nom de l'élève : ${paiement.nom} ${paiement.prenom}`, 10, 58);
       doc.text(`Classe : ${paiement.classe}`, 10, 66);
       doc.text(`Année scolaire : ${paiement.anneeScolaire}`, 10, 74);
@@ -82,23 +176,63 @@ export default function ElevesList() {
       doc.text(`Date du paiement : ${paiement.date}`, 10, 90);
       doc.text(`Reçu N° : ${paiement.numero}`, 10, 98);
 
+      // Tableau détaillé avec tous les frais
+      const tableData = [];
+      
+      if (tableData.length > 0) {
+        if (paiement.fraisScolairePayes > 0) {
+          tableData.push(['Frais de scolarité', `${paiement.fraisScolairePayes} FCFA`]);
+        }
+        if (paiement.fraisClassePayes > 0) {
+          tableData.push(['Frais de classe', `${paiement.fraisClassePayes} FCFA`]);
+        }
+        if (paiement.droitExamenPayes > 0) {
+          tableData.push(['Droit d\'examen', `${paiement.droitExamenPayes} FCFA`]);
+        }
+        if (paiement.papiersRamesPayes > 0) {
+          tableData.push(['Papiers/Rames', `${paiement.papiersRamesPayes} FCFA`]);
+        }
+      } else {
+        if (paiement.fraisScolairePayes > 0) {
+          tableData.push(['Frais de scolarité', `${paiement.fraisScolairePayes} FCFA`]);
+        }
+        if (paiement.fraisClassePayes > 0) {
+          tableData.push(['Montant Dû', `${paiement.fraisClassePayes} FCFA`]);
+        }
+        if (paiement.droitExamenPayes > 0) {
+          tableData.push(['Droit d\'examen', `${paiement.droitExamenPayes} FCFA`]);
+        }
+        if (paiement.papiersRamesPayes > 0) {
+          tableData.push(['Papiers/Rames', `${paiement.papiersRamesPayes} FCFA`]);
+        }
+      }
+      
+     
+      tableData.push(['TOTAL PAYÉ', `${paiement.totalPaye} FCFA`]);
+      tableData.push(['RESTE À PAYER', `${paiement.reste} FCFA`]);
+
       doc.autoTable({
         startY: 110,
         head: [['Description', 'Montant']],
-        body: [
-          ['Frais de scolarité', `${paiement.montant} FCFA`],
-          ['Total payé', `${paiement.totalPaye} FCFA`],
-          ['Reste à payer', `${paiement.reste} FCFA`],
-        ],
+        body: tableData,
         theme: 'grid',
         styles: { fontSize: 11, cellPadding: 4 },
         headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
       });
 
+      // Message aux parents si reste à payer
+      if (paiement.reste > 0) {
+        doc.setFontSize(10);
+        doc.text('Message aux parents :', 10, doc.lastAutoTable.finalY + 15);
+        
+        const messageLines = doc.splitTextToSize(paiement.messageParents, 190);
+        doc.text(messageLines, 10, doc.lastAutoTable.finalY + 25);
+      }
+
       const pageHeight = doc.internal.pageSize.height;
       doc.setFontSize(10);
-      doc.text('Merci pour votre paiement.', 10, pageHeight - 20);
-      doc.text('Signature:', 150, pageHeight - 20);
+      doc.text('Merci pour votre paiement.', 10, pageHeight - 30);
+      doc.text('Signature:', 150, pageHeight - 30);
 
       doc.save(`recu-${paiement.matricule}-${paiement.numero}.pdf`);
     };
@@ -123,59 +257,80 @@ export default function ElevesList() {
         return;
       }
 
-      const montantPayeNum = parseInt(montantPaye, 10);
-      if (montantPayeNum > montantDu) {
-        alert(`Le montant payé (${montantPayeNum}) ne peut pas dépasser le montant dû (${montantDu} FCFA).`);
+      const totalPaye = calculerTotalPaye();
+      const totalDu = calculerTotalDu();
+
+      if (totalPaye > totalDu) {
+        alert(`Le montant total payé (${totalPaye}) ne peut pas dépasser le montant total dû (${totalDu} FCFA).`);
+        return;
+      }
+
+      if (totalPaye === 0) {
+        alert('Veuillez saisir au moins un montant à payer.');
         return;
       }
 
       try {
-       const resEleve = await axios.post('http://localhost:5000/api/eleves', {
-  matricule: matricule.trim(),
-  nom: nom.trim(),
-  prenom: prenom.trim(),
-  date_naissance: dateNaissance || null,
-  genre: genre || null,
-  statut_affectation: statutAffectation,
-  classe_id: parseInt(classeId, 10),
-  trimestre: trimestre,  // ajoute ceci si le backend l’attend
-}, {
-  headers: { Authorization: `Bearer ${token}` }
-});
+        const resEleve = await axios.post('http://localhost:5000/api/eleves', {
+          matricule: matricule.trim(),
+          nom: nom.trim(),
+          prenom: prenom.trim(),
+          date_naissance: dateNaissance || null,
+          genre: genre || null,
+          statut_affectation: statutAffectation,
+          classe_id: parseInt(classeId, 10),
+          trimestre: trimestre,
+        }, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
 
-
+        // Enregistrer le paiement avec détails des frais
         await axios.post('http://localhost:5000/api/paiements', {
           eleve_id: resEleve.data.id,
-          montant_paye: montantPayeNum,
+          montant_paye: totalPaye,
           date_paiement: datePaiement,
           annee_scolaire: anneeScolaire,
           mode_paiement: modePaiement,
-          montant_du: montantDu,
-          trimestre
+          montant_du: totalDu,
+          trimestre,
+          // Détails des frais
+          frais_scolaire_paye: parseInt(montantPayeFraisScolaire || 0, 10),
+          frais_classe_paye: parseInt(montantPayeClasse || 0, 10),
+          droit_examen_paye: parseInt(montantPayeDroitExamen || 0, 10),
+          papiers_rames_paye: parseInt(montantPayePapiersRames || 0, 10),
+          frais_scolaire_du: fraisScolaire,
+          frais_classe_du: montantDu,
+          droit_examen_du: droitExamen,
+          papiers_rames_du: papiersRames
         }, {
           headers: { Authorization: `Bearer ${token}` }
         });
 
         const classeNom = classes.find(c => c.id === parseInt(classeId))?.nom;
         const numeroRecu = `REC-${Date.now()}`;
-        const reste = montantDu - montantPayeNum;
+        const reste = calculerResteAPayer();
 
         genererRecu({
-          matricule,        // <-- passage matricule reçu
+          matricule,
           nom,
           prenom,
           classe: classeNom,
           anneeScolaire,
           trimestre,
-          montant: montantDu,
-          totalPaye: montantPayeNum,
+          totalPaye,
           reste,
           date: datePaiement,
-          numero: numeroRecu
+          numero: numeroRecu,
+          fraisScolairePayes: parseInt(montantPayeFraisScolaire || 0, 10),
+          fraisClassePayes: parseInt(montantPayeClasse || 0, 10),
+          droitExamenPayes: parseInt(montantPayeDroitExamen || 0, 10),
+          papiersRamesPayes: parseInt(montantPayePapiersRames || 0, 10),
+          messageParents: genererMessageParents()
         });
 
         alert('Élève et paiement enregistrés avec succès');
-        // Reset champs
+        
+        // Reset tous les champs
         setMatricule('');
         setNom('');
         setPrenom('');
@@ -186,8 +341,11 @@ export default function ElevesList() {
         setAnneeScolaire('');
         setTrimestre('');
         setDatePaiement('');
-        setMontantPaye('');
         setModePaiement('');
+        setMontantPayeFraisScolaire('');
+        setMontantPayeClasse('');
+        setMontantPayeDroitExamen('');
+        setMontantPayePapiersRames('');
         setEtape(1);
       } catch (err) {
         console.error('Erreur détail:', err.response?.data || err.message);
@@ -198,7 +356,6 @@ export default function ElevesList() {
 
   return (
     <div className="container-fluid mt-4 px-4">
-
       <div className="card shadow-sm">
         <div className="card-header bg-primary text-white">
           <h4>Gestion des élèves & paiements (Étape {etape}/2)</h4>
@@ -218,17 +375,16 @@ export default function ElevesList() {
                   />
                 </div>
                 <div className="row">
-  <div className="col-md-6 mb-3">
-    <label className="form-label">Nom</label>
-    <input className="form-control" value={nom} onChange={e => setNom(e.target.value)} required  />
-  </div>
-  <div className="col-md-6 mb-3">
-    <label className="form-label">Prénom</label>
-    <input className="form-control" value={prenom} onChange={e => setPrenom(e.target.value)} required  />
-  </div>
-</div>
+                  <div className="col-md-6 mb-3">
+                    <label className="form-label">Nom</label>
+                    <input className="form-control" value={nom} onChange={e => setNom(e.target.value)} required />
+                  </div>
+                  <div className="col-md-6 mb-3">
+                    <label className="form-label">Prénom</label>
+                    <input className="form-control" value={prenom} onChange={e => setPrenom(e.target.value)} required />
+                  </div>
+                </div>
 
-                
                 <div className="mb-3">
                   <label className="form-label">Date de naissance</label>
                   <input type="date" className="form-control" value={dateNaissance} onChange={e => setDateNaissance(e.target.value)} />
@@ -303,29 +459,157 @@ export default function ElevesList() {
                     <option value="Chèque">Chèque</option>
                   </select>
                 </div>
-                <div className="mb-3">
-                  <label className="form-label">Montant dû</label>
-                  <input type="number" className="form-control" value={montantDu} readOnly />
+
+                {/* Section des frais détaillés */}
+                <div className="card mb-3">
+                  <div className="card-header">
+                    <h5>Détail des frais</h5>
+                  </div>
+                  <div className="card-body">
+                    {/* Frais scolaires */}
+                    <div className="row mb-3">
+                      <div className="col-md-6">
+                        <label className="form-label">Frais de scolarité (dû)</label>
+                        <input type="number" className="form-control" value={fraisScolaire} readOnly />
+                      </div>
+                      <div className="col-md-6">
+                        <label className="form-label">Montant payé (frais scolarité)</label>
+                        <input
+                          type="number"
+                          className="form-control"
+                          value={montantPayeFraisScolaire}
+                          onChange={e => {
+                            let val = e.target.value;
+                            if (val === '') return setMontantPayeFraisScolaire('');
+                            val = parseInt(val, 10);
+                            if (isNaN(val) || val < 0) val = 0;
+                            if (val > fraisScolaire) val = fraisScolaire;
+                            setMontantPayeFraisScolaire(val);
+                          }}
+                          min="0"
+                          max={fraisScolaire}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Frais de classe (montant selon classe/statut) */}
+                    <div className="row mb-3">
+                      <div className="col-md-6">
+                        <label className="form-label">Frais de classe (dû)</label>
+                        <input type="number" className="form-control" value={montantDu} readOnly />
+                      </div>
+                      <div className="col-md-6">
+                        <label className="form-label">Montant payé (frais classe)</label>
+                        <input
+                          type="number"
+                          className="form-control"
+                          value={montantPayeClasse}
+                          onChange={e => {
+                            let val = e.target.value;
+                            if (val === '') return setMontantPayeClasse('');
+                            val = parseInt(val, 10);
+                            if (isNaN(val) || val < 0) val = 0;
+                            if (val > montantDu) val = montantDu;
+                            setMontantPayeClasse(val);
+                          }}
+                          min="0"
+                          max={montantDu}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Droit d'examen (seulement pour 3ème et terminale) */}
+                    {droitExamen > 0 && (
+                      <div className="row mb-3">
+                        <div className="col-md-6">
+                          <label className="form-label">Droit d'examen (dû)</label>
+                          <input type="number" className="form-control" value={droitExamen} readOnly />
+                        </div>
+                        <div className="col-md-6">
+                          <label className="form-label">Montant payé (droit d'examen)</label>
+                          <input
+                            type="number"
+                            className="form-control"
+                            value={montantPayeDroitExamen}
+                            onChange={e => {
+                              let val = e.target.value;
+                              if (val === '') return setMontantPayeDroitExamen('');
+                              val = parseInt(val, 10);
+                              if (isNaN(val) || val < 0) val = 0;
+                              if (val > droitExamen) val = droitExamen;
+                              setMontantPayeDroitExamen(val);
+                            }}
+                            min="0"
+                            max={droitExamen}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Papiers/Rames */}
+                    <div className="row mb-3">
+                      <div className="col-md-6">
+                        <label className="form-label">Papiers/Rames (dû)</label>
+                        <input
+                          type="number"
+                          className="form-control"
+                          value={papiersRames}
+                          onChange={e => setPapiersRames(parseInt(e.target.value) || 0)}
+                        />
+                      </div>
+                      <div className="col-md-6">
+                        <label className="form-label">Montant payé (papiers/rames)</label>
+                        <input
+                          type="number"
+                          className="form-control"
+                          value={montantPayePapiersRames}
+                          onChange={e => {
+                            let val = e.target.value;
+                            if (val === '') return setMontantPayePapiersRames('');
+                            val = parseInt(val, 10);
+                            if (isNaN(val) || val < 0) val = 0;
+                            if (val > papiersRames) val = papiersRames;
+                            setMontantPayePapiersRames(val);
+                          }}
+                          min="0"
+                          max={papiersRames}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Récapitulatif */}
+                    <div className="row mb-3">
+                      <div className="col-md-4">
+                        <label className="form-label">Total dû</label>
+                        <input type="number" className="form-control" value={calculerTotalDu()} readOnly />
+                      </div>
+                      <div className="col-md-4">
+                        <label className="form-label">Total à payer</label>
+                        <input type="number" className="form-control" value={calculerTotalPaye()} readOnly />
+                      </div>
+                      <div className="col-md-4">
+                        <label className="form-label">Reste à payer</label>
+                        <input type="number" className="form-control" value={calculerResteAPayer()} readOnly />
+                      </div>
+                    </div>
+
+                    <div className="alert alert-info">
+                      <strong>Récapitulatif :</strong><br/>
+                      Total dû : {calculerTotalDu()} FCFA<br/>
+                      Total payé : {calculerTotalPaye()} FCFA<br/>
+                      Reste à payer : {calculerResteAPayer()} FCFA
+                    </div>
+
+                    {/* Aperçu du message aux parents */}
+                    {calculerResteAPayer() > 0 && (
+                      <div className="alert alert-warning">
+                        <strong>Message aux parents :</strong><br/>
+                        <small>{genererMessageParents()}</small>
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <div className="mb-3">
-                  <label className="form-label">Montant payé</label>
-                  <input
-                    type="number"
-                    className="form-control"
-                    value={montantPaye}
-                    onChange={e => {
-                      let val = e.target.value;
-                      if (val === '') return setMontantPaye('');
-                      val = parseInt(val, 10);
-                      if (isNaN(val) || val < 0) val = 0;
-                      if (val > montantDu) val = montantDu;
-                      setMontantPaye(val);
-                    }}
-                    min="0"
-                    max={montantDu}
-                    required
-                  />
-                </div>
+
                 <button type="button" className="btn btn-secondary me-2" onClick={() => setEtape(1)}>← Précédent</button>
                 <button type="submit" className="btn btn-success">Valider</button>
               </>

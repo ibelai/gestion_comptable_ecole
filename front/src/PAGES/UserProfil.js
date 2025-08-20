@@ -5,11 +5,11 @@ import axios from "axios";
 const UserProfile = () => {
   const [user, setUser] = useState(null);
   const token = localStorage.getItem("token");
-
+const API_URL = process.env.REACT_APP_API_URL;
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        const res = await axios.get("http://localhost:5000/api/user/profile", {
+        const res = await axios.get(`${API_URL}/api/user/profile`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         setUser(res.data);
@@ -30,7 +30,7 @@ const UserProfile = () => {
     <div>
       <h2>Profil utilisateur</h2>
       {user.avatar ? (
-        <img src={`http://localhost:5000${user.avatar}`} alt="Avatar" style={{ width: 120, borderRadius: "50%" }} />
+        <img src={`${API_URL}${user.avatar}`} alt="Avatar" style={{ width: 120, borderRadius: "50%" }} />
       ) : (
         <p>Aucun avatar</p>
       )}

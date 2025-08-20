@@ -8,7 +8,7 @@ const ChangerMotDePasse = () => {
   const [message, setMessage] = useState("");
   const [variant, setVariant] = useState("success");
   const [loading, setLoading] = useState(false);
-
+const API_URL = process.env.REACT_APP_API_URL;
   const handleSubmit = async (e) => {
     e.preventDefault();
     setMessage("");
@@ -23,7 +23,7 @@ const ChangerMotDePasse = () => {
     try {
       const token = localStorage.getItem("token");
      await axios.put(
-  "http://localhost:5000/api/profil/password",
+  `${API_URL}/api/profil/password`,
   { currentPassword, newPassword },
   { headers: { Authorization: `Bearer ${token}` } }
 );

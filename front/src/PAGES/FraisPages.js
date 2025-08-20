@@ -5,13 +5,13 @@ const FraisPage = () => {
   const [frais, setFrais] = useState([]);
   const [form, setForm] = useState({ type: '', montant: '', classe_id: '', annee_scolaire: '' });
   const [editId, setEditId] = useState(null);
-
+const API_URL = process.env.REACT_APP_API_URL;
   useEffect(() => {
     fetchFrais();
   }, []);
 
   const fetchFrais = async () => {
-    const res = await axios.get('http://localhost:5000/api/frais');
+    const res = await axios.get(`${API_URL}/api/frais`);
     setFrais(res.data);
   };
 
@@ -22,9 +22,9 @@ const FraisPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (editId) {
-      await axios.put(`http://localhost:5000/api/frais/${editId}`, form);
+      await axios.put(`${API_URL}/api/frais/${editId}`, form);
     } else {
-      await axios.post('http://localhost:5000/api/frais', form);
+      await axios.post(`${API_URL}/api/frais`, form);
     }
     setForm({ type: '', montant: '', classe_id: '', annee_scolaire: '' });
     setEditId(null);
@@ -38,7 +38,7 @@ const FraisPage = () => {
 
   const handleDelete = async (id) => {
     if (window.confirm('Confirmer la suppression ?')) {
-      await axios.delete(`http://localhost:5000/api/frais/${id}`);
+      await axios.delete(`${API_URL}/api/frais/${id}`);
       fetchFrais();
     }
   };

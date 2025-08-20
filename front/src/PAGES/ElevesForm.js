@@ -22,7 +22,7 @@ const ElevesForm = () => {
     matricule: ''
   });
   const [loading, setLoading] = useState(false);
-
+const API_URL = process.env.REACT_APP_API_URL;
   const token = localStorage.getItem('token');
 
   // Fonction pour récupérer les élèves avec les filtres
@@ -34,7 +34,7 @@ const ElevesForm = () => {
       if (anneeFilter.trim()) params.annee_scolaire = anneeFilter.trim();
       if (affectationFilter.trim()) params.statut_affectation = affectationFilter.trim();
 
-      const res = await axios.get('http://localhost:5000/api/eleves/avec-montants', {
+      const res = await axios.get(`{${API_URL}/api/eleves/avec-montants`, {
         params,
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -50,7 +50,7 @@ const ElevesForm = () => {
   // Récupérer la liste des classes
   const fetchClasses = async () => {
     try {
-      const res = await axios.get('http://localhost:5000/api/classes');
+      const res = await axios.get(`${API_URL}/api/classes`);
       setClasses(res.data);
     } catch (err) {
       console.error('Erreur chargement classes:', err);
@@ -61,7 +61,7 @@ const ElevesForm = () => {
   // Récupérer la liste des années scolaires
   const fetchAnnees = async () => {
     try {
-      const res = await axios.get('http://localhost:5000/api/eleves/annees-scolaires', {
+      const res = await axios.get(`£${API_URL}/api/eleves/annees-scolaires`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setAnnees(res.data);
@@ -114,7 +114,7 @@ const ElevesForm = () => {
   // Envoyer la mise à jour au backend
   const mettreAJourEleve = async () => {
     try {
-      await axios.put(`http://localhost:5000/api/eleves/${eleveAModifier.id}`, formModif, {
+      await axios.put(`${API_URL}/api/eleves/${eleveAModifier.id}`, formModif, {
         headers: { Authorization: `Bearer ${token}` },
       });
       alert("Élève modifié avec succès !");
@@ -130,7 +130,7 @@ const ElevesForm = () => {
   const supprimerEleve = async (id) => {
     if (window.confirm("Voulez-vous vraiment supprimer cet élève ?")) {
       try {
-        await axios.delete(`http://localhost:5000/api/eleves/${id}`, {
+        await axios.delete(`${API_URL}/api/eleves/${id}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         alert("Élève supprimé avec succès !");

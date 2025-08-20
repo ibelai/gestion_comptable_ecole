@@ -9,10 +9,10 @@ export default function PaiementForm() {
     trimestre: "",
     annee_scolaire: "",
   });
-
+const API_URL = process.env.REACT_APP_API_URL;
   const fetchPaiements = async () => {
     try {
-      const res = await axios.get("/api/paiements", { params: filters });
+      const res = await axios.get(`${API_URL}/api/paiements`, { params: filters });
       setPaiements(res.data);
     } catch (err) {
       console.error("Erreur chargement paiements", err);

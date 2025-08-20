@@ -7,12 +7,12 @@ import {
 function AdminDashboard() {
   const [stats, setStats] = useState(null);
   const [error, setError] = useState('');
-
+const API_URL = process.env.REACT_APP_API_URL;
   useEffect(() => {
     const fetchStats = async () => {
       try {
         const token = localStorage.getItem('token');
-        const res = await axios.get('http://localhost:5000/api/dashboard/admin', {
+        const res = await axios.get(`${API_URL}/api/dashboard/admin`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },

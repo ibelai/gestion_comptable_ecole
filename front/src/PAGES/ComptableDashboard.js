@@ -7,14 +7,14 @@ import {
 function ComptableDashboard() {
   const [stats, setStats] = useState(null);
   const [error, setError] = useState('');
-
+const API_URL = process.env.REACT_APP_API_URL;
   const COLORS = ['#28a745', '#ffc107', '#dc3545'];
 
   useEffect(() => {
     const fetchStats = async () => {
       try {
         const token = localStorage.getItem('token');
-        const res = await axios.get('http://localhost:5000/api/dashboard/comptable', {
+        const res = await axios.get(`${API_URL}/api/dashboard/comptable'`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },

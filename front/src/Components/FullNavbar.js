@@ -16,7 +16,7 @@ import {
 const FullNavbar = ({ user, onLogout }) => {
   const location = useLocation();
   const [expanded, setExpanded] = useState(false);
-
+const API_URL =process.env.REACT_APP_API_URL;
   const commonLinks = [
     { path: "/tableau-de-bord", label: "Tableau de bord", icon: <FaTachometerAlt /> },
     { path: "/eleves", label: "Gestion des élèves", icon: <FaUserGraduate /> },
@@ -24,7 +24,7 @@ const FullNavbar = ({ user, onLogout }) => {
   ];
 
   const avatarUrl = user?.avatar
-    ? `http://localhost:5000/uploads/avatars/${user.avatar}`
+    ? `${API_URL}/uploads/avatars/${user.avatar}`
     : "/default-avatar.png";
 
   return (
@@ -38,7 +38,7 @@ const FullNavbar = ({ user, onLogout }) => {
     >
       <Container fluid>
         <Navbar.Brand as={Link} to="/" onClick={() => setExpanded(false)}>
-          Gestion Comptable École
+         <img src="/logo.jpg" alt="logo" height="40" className="d-inline-block align-top"/>
         </Navbar.Brand>
         <Navbar.Toggle
           aria-controls="navbar-nav"

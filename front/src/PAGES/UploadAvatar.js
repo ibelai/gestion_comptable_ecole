@@ -6,7 +6,7 @@ const UploadAvatar = ({ token, onAvatarUpdated }) => {
   const [error, setError] = useState("");
 
   const handleFileChange = (e) => setFile(e.target.files[0]);
-
+const API_URL = process.env.REACT_APP_API_URL;
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!file) {
@@ -19,7 +19,7 @@ const UploadAvatar = ({ token, onAvatarUpdated }) => {
     formData.append("avatar", file);
 
     try {
-      const res = await axios.post("http://localhost:5000/api/user/profile/avatar", formData, {
+      const res = await axios.post(`${API_URL}/api/user/profile/avatar`, formData, {
         headers: {
           "Content-Type": "multipart/form-data",
           Authorization: `Bearer ${token}`,

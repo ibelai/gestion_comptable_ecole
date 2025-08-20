@@ -5,7 +5,7 @@ const ClassesPage = () => {
   const [classes, setClasses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-
+const API_URL = process.env.REACT_APP_API_URL;
   const [form, setForm] = useState({
     id: null,
     nom: "",
@@ -16,7 +16,7 @@ const ClassesPage = () => {
   const fetchClasses = async () => {
     try {
       setLoading(true);
-      const res = await axios.get("http://localhost:5000/api/classes");
+      const res = await axios.get(`${API_URL}/api/classes`);
       setClasses(res.data);
       setLoading(false);
     } catch (err) {
@@ -41,9 +41,9 @@ const ClassesPage = () => {
 
     try {
       if (isEditing) {
-        await axios.put(`http://localhost:5000/api/classes/${form.id}`, form);
+        await axios.put(`${API_URL}/api/classes/${form.id}`, form);
       } else {
-        await axios.post("http://localhost:5000/api/classes", form);
+        await axios.post(`${API_URL}/api/classes`, form);
       }
       setForm({ id: null, nom: "" });
       setIsEditing(false);
@@ -66,7 +66,7 @@ const ClassesPage = () => {
   const handleDelete = async (id) => {
     if (window.confirm("Voulez-vous vraiment supprimer cette classe ?")) {
       try {
-        await axios.delete(`http://localhost:5000/api/classes/${id}`);
+        await axios.delete(`${API_URL}/api/classes/${id}`);
         fetchClasses();
       } catch {
         setError("Erreur lors de la suppression");

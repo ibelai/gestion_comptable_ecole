@@ -12,10 +12,10 @@ export default function MontantsAdmin() {
     montant: '',
   });
   const [isEditing, setIsEditing] = useState(false);
-
+const API_URL = process.env.REACT_APP_API_URL;
   // Charger la liste
   useEffect(() => {
-    axios.get('http://localhost:5000/api/classes/montants', {
+    axios.get(`${API_URL}/api/classes/montants`, {
       headers: { Authorization: `Bearer ${token}` }
     }).then(res => setMontants(res.data))
       .catch(err => console.error(err));
@@ -41,7 +41,7 @@ export default function MontantsAdmin() {
     console.log("Valeur statut_affectation envoyée :", dataToSend.statut_affectation);
 
     if (isEditing) {
-      axios.put(`http://localhost:5000/api/classes/montants/${form.id}`, dataToSend, {
+      axios.put(`${API_URL}/api/classes/montants/${form.id}`, dataToSend, {
         headers: { Authorization: `Bearer ${token}` }
       }).then(res => {
         setMontants(montants.map(m => (m.id === form.id ? res.data : m)));
@@ -49,7 +49,7 @@ export default function MontantsAdmin() {
         setIsEditing(false);
       }).catch(err => alert('Erreur modification'));
     } else {
-      axios.post('http://localhost:5000/api/classes/montants', dataToSend, {
+      axios.post(`${API_URL}/api/classes/montants`, dataToSend, {
         headers: { Authorization: `Bearer ${token}` }
       }).then(res => {
         setMontants([...montants, res.data]);
@@ -79,7 +79,7 @@ export default function MontantsAdmin() {
   // Supprimer
   const handleDelete = id => {
     if (window.confirm('Confirmer la suppression ?')) {
-      axios.delete(`http://localhost:5000/api/classes/montants/${id}`, {
+      axios.delete(`${API_URL}/api/classes/montants/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       }).then(() => {
         setMontants(montants.filter(m => m.id !== id));

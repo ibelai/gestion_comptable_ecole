@@ -4,6 +4,8 @@
   "description": "",
   "main": "server.js",
   "scripts": {
+    "build": "npm run build-prod",
+    "build-prod": "parcel build src/index.html",
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node server.js"
   },
@@ -21,5 +23,8 @@
     "multer": "^2.0.0",
     "mysql2": "^3.14.1",
     "nodemon": "^3.1.10"
+  },
+  "devDependencies": {
+    "parcel-bundler": "^1.12.5"
   }
 }

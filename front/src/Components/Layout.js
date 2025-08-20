@@ -21,9 +21,9 @@ import {
 
 const FullNavbar = ({ role, user, onLogout }) => {
   const location = useLocation();
-
+const API_URL =process.env.REACT_APP_API_URL;
   const avatarUrl = user?.avatar
-    ? `http://localhost:5000/uploads/avatars/${user.avatar}`
+    ? `${API_URL}/uploads/avatars/${user.avatar}`
     : "/default-avatar.png";
 
   const commonLinks = [

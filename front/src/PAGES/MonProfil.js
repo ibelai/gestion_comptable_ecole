@@ -6,7 +6,7 @@ const MonProfil = () => {
   const [profil, setProfil] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-
+const API_URL = process.env.REACT_APP_API_URL;
   useEffect(() => {
     const fetchProfil = async () => {
       try {
@@ -16,7 +16,7 @@ const MonProfil = () => {
           setLoading(false);
           return;
         }
-        const res = await axios.get("http://localhost:5000/api/profil", {
+        const res = await axios.get(`${API_URL}/api/profil`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         setProfil(res.data);
@@ -61,7 +61,7 @@ const MonProfil = () => {
         <Card.Body className="text-center">
           {profil.avatar ? (
             <img
-              src={`http://localhost:5000/uploads/avatars/${profil.avatar}`} 
+              src={`${API_URL}/uploads/avatars/${profil.avatar}`} 
               alt={`Avatar de ${profil.nom}`}
               style={{ width: 100, borderRadius: "50%", marginBottom: 20 }}
             />
