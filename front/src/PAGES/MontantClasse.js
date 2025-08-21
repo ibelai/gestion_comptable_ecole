@@ -1,183 +1,134 @@
-import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+import React, { useState, useEffect } from "react";
+import axios from "axios";
 
-export default function MontantsAdmin() {
-  const token = localStorage.getItem('token');
-  const [montants, setMontants] = useState([]);
-  const [form, setForm] = useState({
-    id: null,
-    classe: '',
-    annee_scolaire: '',
-    statut_affectation: 'affecté', // valeur par défaut cohérente
-    montant: '',
-  });
-  const [isEditing, setIsEditing] = useState(false);
-const API_URL = process.env.REACT_APP_API_URL;
-  // Charger la liste
-  useEffect(() => {
-    axios.get(`${API_URL}/api/classes/montants`, {
-      headers: { Authorization: `Bearer ${token}` }
-    }).then(res => setMontants(res.data))
-      .catch(err => console.error(err));
-  }, [token]);
+const ClassesPage = () => {
+  const [classes, setClasses] = useState([]);
+  const [nom, setNom] = useState("");
+  const [niveau, setNiveau] = useState("");
+  const [montant, setMontant] = useState("");
+  const [editingId, setEditingId] = useState(null);
 
-  // Handle input change
-  const handleChange = e => {
-    setForm({ ...form, [e.target.name]: e.target.value });
-  };
-
-  // Ajouter ou modifier
-  const handleSubmit = e => {
-    e.preventDefault();
-
-    // Nettoyage et trim des valeurs string
-    const dataToSend = {
-      classe: form.classe.trim(),
-      annee_scolaire: form.annee_scolaire.trim(),
-      statut_affectation: form.statut_affectation.trim(),
-      montant: Number(form.montant),
-    };
-
-    console.log("Valeur statut_affectation envoyée :", dataToSend.statut_affectation);
-
-    if (isEditing) {
-      axios.put(`${API_URL}/api/classes/montants/${form.id}`, dataToSend, {
-        headers: { Authorization: `Bearer ${token}` }
-      }).then(res => {
-        setMontants(montants.map(m => (m.id === form.id ? res.data : m)));
-        setForm({ id: null, classe: '', annee_scolaire: '', statut_affectation: 'affecté', montant: '' });
-        setIsEditing(false);
-      }).catch(err => alert('Erreur modification'));
-    } else {
-      axios.post(`${API_URL}/api/classes/montants`, dataToSend, {
-        headers: { Authorization: `Bearer ${token}` }
-      }).then(res => {
-        setMontants([...montants, res.data]);
-        setForm({ id: null, classe: '', annee_scolaire: '', statut_affectation: 'affecté', montant: '' });
-      }).catch(err => {
-        if (err.response && err.response.data && err.response.data.error) {
-          alert('Erreur ajout: ' + err.response.data.error);
-        } else {
-          alert('Erreur ajout inconnue');
-        }
-      });
+  // Charger les classes
+  const fetchClasses = async () => {
+    try {
+      const res = await axios.get("https://gestion-comptable-ecole.onrender.com/api/classes");
+      setClasses(res.data);
+    } catch (err) {
+      console.error(err.response?.data || err.message);
     }
   };
 
-  // Modifier : remplir le formulaire
-  const startEdit = m => {
-    setForm({
-      id: m.id,
-      classe: m.classe || '',
-      annee_scolaire: m.annee_scolaire || '',
-      statut_affectation: m.statut_affectation || 'affecté',
-      montant: m.montant.toString() || '',
-    });
-    setIsEditing(true);
+  useEffect(() => {
+    fetchClasses();
+  }, []);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!nom || !niveau || montant === "") {
+      alert("Tous les champs sont requis");
+      return;
+    }
+
+    try {
+      if (editingId) {
+        // Modifier
+        await axios.put(
+          `https://gestion-comptable-ecole.onrender.com/api/classes/${editingId}`,
+          { nom, niveau, montant: Number(montant) }
+        );
+        setEditingId(null);
+      } else {
+        // Créer
+        await axios.post("https://gestion-comptable-ecole.onrender.com/api/classes", {
+          nom,
+          niveau,
+          montant: Number(montant),
+        });
+      }
+      setNom("");
+      setNiveau("");
+      setMontant("");
+      fetchClasses();
+    } catch (err) {
+      console.error(err.response?.data?.message || err.message);
+      alert(err.response?.data?.message || "Erreur serveur");
+    }
   };
 
-  // Supprimer
-  const handleDelete = id => {
-    if (window.confirm('Confirmer la suppression ?')) {
-      axios.delete(`${API_URL}/api/classes/montants/${id}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      }).then(() => {
-        setMontants(montants.filter(m => m.id !== id));
-      }).catch(() => alert('Erreur suppression'));
+  const handleEdit = (classe) => {
+    setEditingId(classe.id);
+    setNom(classe.nom);
+    setNiveau(classe.niveau);
+    setMontant(classe.montant);
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm("Voulez-vous vraiment supprimer cette classe ?")) return;
+    try {
+      await axios.delete(`https://gestion-comptable-ecole.onrender.com/api/classes/${id}`);
+      fetchClasses();
+    } catch (err) {
+      console.error(err.response?.data?.message || err.message);
+      alert(err.response?.data?.message || "Erreur serveur");
     }
   };
 
   return (
     <div className="container mt-4">
-      <h3>Gestion des montants par classe</h3>
-
-      <form onSubmit={handleSubmit} className="mb-4">
-        <div className="row g-3 align-items-end">
-          <div className="col-md-3">
-            <label>Classe</label>
-            <input
-              type="text"
-              name="classe"
-              className="form-control"
-              value={form.classe}
-              onChange={handleChange}
-              required
-              placeholder="Ex: 6e, 5e..."
-            />
-          </div>
-          <div className="col-md-3">
-            <label>Année scolaire</label>
-            <input
-              type="text"
-              name="annee_scolaire"
-              className="form-control"
-              value={form.annee_scolaire}
-              onChange={handleChange}
-              required
-              placeholder="2024-2025"
-            />
-          </div>
-          <div className="col-md-3">
-            <label>Statut d'affectation</label>
-            <select
-              name="statut_affectation"
-              className="form-select"
-              value={form.statut_affectation}
-              onChange={handleChange}
-              required
-            >
-              <option value="">--Choisir--</option>
-              <option value="affecté">Affecté (État)</option>
-              <option value="non affecté">Non Affecté</option>
-            </select>
-          </div>
-          <div className="col-md-2">
-            <label>Montant (FCFA)</label>
-            <input
-              type="number"
-              name="montant"
-              className="form-control"
-              value={form.montant}
-              onChange={handleChange}
-              required
-              min="0"
-            />
-          </div>
-          <div className="col-md-1">
-            <button type="submit" className="btn btn-success w-100">
-              {isEditing ? 'Modifier' : 'Ajouter'}
-            </button>
-          </div>
+      <h3>{editingId ? "Modifier une classe" : "Créer une classe"}</h3>
+      <form onSubmit={handleSubmit}>
+        <div className="mb-3">
+          <label>Nom :</label>
+          <input className="form-control" value={nom} onChange={(e) => setNom(e.target.value)} />
         </div>
+        <div className="mb-3">
+          <label>Niveau :</label>
+          <input className="form-control" value={niveau} onChange={(e) => setNiveau(e.target.value)} />
+        </div>
+        <div className="mb-3">
+          <label>Montant :</label>
+          <input
+            type="number"
+            className="form-control"
+            value={montant}
+            onChange={(e) => setMontant(e.target.value)}
+          />
+        </div>
+        <button type="submit" className="btn btn-primary">
+          {editingId ? "Modifier" : "Créer"}
+        </button>
       </form>
 
-      <table className="table table-bordered">
-        <thead className="table-light">
+      <h4 className="mt-5">Liste des classes</h4>
+      <table className="table table-bordered mt-3">
+        <thead>
           <tr>
-            <th>Classe</th>
-            <th>Année scolaire</th>
-            <th>Statut affectation</th>
-            <th>Montant (FCFA)</th>
+            <th>Nom</th>
+            <th>Niveau</th>
+            <th>Montant</th>
             <th>Actions</th>
           </tr>
         </thead>
         <tbody>
-          {montants.length > 0 ? montants.map(m => (
-            <tr key={m.id}>
-              <td>{m.classe}</td>
-              <td>{m.annee_scolaire}</td>
-              <td>{m.statut_affectation}</td>
-              <td>{m.montant}</td>
+          {classes.map((classe) => (
+            <tr key={classe.id}>
+              <td>{classe.nom}</td>
+              <td>{classe.niveau}</td>
+              <td>{classe.montant}</td>
               <td>
-                <button className="btn btn-primary btn-sm me-2" onClick={() => startEdit(m)}>Modifier</button>
-                <button className="btn btn-danger btn-sm" onClick={() => handleDelete(m.id)}>Supprimer</button>
+                <button className="btn btn-sm btn-warning me-2" onClick={() => handleEdit(classe)}>
+                  Modifier
+                </button>
+                <button className="btn btn-sm btn-danger" onClick={() => handleDelete(classe.id)}>
+                  Supprimer
+                </button>
               </td>
             </tr>
-          )) : (
-            <tr><td colSpan="5" className="text-center">Aucun montant configuré</td></tr>
-          )}
+          ))}
         </tbody>
       </table>
     </div>
   );
-}
+};
+
+export default ClassesPage;
