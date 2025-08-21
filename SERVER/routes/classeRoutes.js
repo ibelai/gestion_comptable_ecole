@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const pool = require('../db');
-const { montantSchema, montantUpdateSchema } = require('../validation/montantsSchema');
+const { montantAvecNomClasseSchema, montantUpdateSchema } = require('../validation/montantsSchema');
 
 // === ROUTES POUR LES CLASSES ===
 
@@ -29,14 +29,17 @@ router.post('/avec-montant', async (req, res) => {
       [nom]
     );
 
-    // Insertion montant lié à la classe
+    // Récupérer l'ID de la classe nouvellement créée
+    const classe_id = resultClass.insertId;
+
+    // Insertion montant lié à la classe avec classe_id
     await conn.query(
-      `INSERT INTO montants_classes (classe, montant, annee_scolaire, statut_affectation) VALUES (?, ?, ?, ?)`,
-      [nom, montant, annee_scolaire, statut_affectation]
+      `INSERT INTO montants_classes (classe_id, montant, annee_scolaire, statut_affectation) VALUES (?, ?, ?, ?)`,
+      [classe_id, montant, annee_scolaire, statut_affectation]
     );
 
     await conn.commit();
-    res.status(201).json({ message: 'Classe et montant ajoutés avec succès' });
+    res.status(201).json({ message: 'Classe et montant ajoutés avec succès', classe_id });
   } catch (err) {
     await conn.rollback();
     console.error(err);
@@ -49,22 +52,27 @@ router.post('/avec-montant', async (req, res) => {
   }
 });
 
-// GET montants avec filtre année et statut_affectation
+// GET montants avec filtre année et statut_affectation (avec JOIN pour récupérer le nom de classe)
 router.get('/montants', async (req, res) => {
   const { annee, statut } = req.query;
   const conn = await pool.getConnection();
   try {
-    let query = 'SELECT * FROM montants_classes WHERE 1=1';
+    let query = `
+      SELECT m.*, c.nom as classe_nom 
+      FROM montants_classes m 
+      JOIN classes c ON m.classe_id = c.id 
+      WHERE 1=1
+    `;
     const params = [];
 
     if (annee) {
-      query += ' AND annee_scolaire = ?';
+      query += ' AND m.annee_scolaire = ?';
       params.push(annee);
     }
 
     if (statut) {
       if (statut === 'affecté' || statut === 'non affecté') {
-        query += ' AND statut_affectation = ?';
+        query += ' AND m.statut_affectation = ?';
         params.push(statut);
       } else {
         return res.status(400).json({ error: 'Statut affectation invalide.' });
@@ -81,14 +89,14 @@ router.get('/montants', async (req, res) => {
   }
 });
 
-// POST un montant
+// POST un montant - Option avec nom de classe (comme dans votre schéma actuel)
 router.post('/montants', async (req, res) => {
   console.log('--- POST /montants ---');
   console.log('Body reçu:', req.body);
 
   try {
     // 1️⃣ Validation avec Joi
-    const { error, value } = montantSchema.validate(req.body, { abortEarly: false });
+    const { error, value } = montantAvecNomClasseSchema.validate(req.body, { abortEarly: false });
     if (error) {
       console.log('Erreur validation Joi:', error.details.map(d => d.message));
       return res.status(400).json({ error: error.details.map(d => d.message).join(', ') });
@@ -102,14 +110,23 @@ router.post('/montants', async (req, res) => {
     console.log('Connexion DB OK');
 
     try {
-      // 3️⃣ Insertion dans la table
+      // Récupérer l'ID de la classe à partir du nom
+      const [classResult] = await conn.query('SELECT id FROM classes WHERE nom = ?', [classe]);
+      if (classResult.length === 0) {
+        return res.status(400).json({ error: 'Classe non trouvée.' });
+      }
+
+      const classe_id = classResult[0].id;
+      console.log('Classe trouvée, ID:', classe_id);
+
+      // 3️⃣ Insertion dans la table avec classe_id
       const [result] = await conn.query(
-        `INSERT INTO montants_classes (classe, montant, annee_scolaire, statut_affectation) VALUES (?, ?, ?, ?)`,
-        [classe, montant, annee_scolaire, statut_affectation]
+        `INSERT INTO montants_classes (classe_id, montant, annee_scolaire, statut_affectation) VALUES (?, ?, ?, ?)`,
+        [classe_id, montant, annee_scolaire, statut_affectation]
       );
 
       console.log('Insertion réussie, ID:', result.insertId);
-      res.status(201).json({ id: result.insertId, classe, montant, annee_scolaire, statut_affectation });
+      res.status(201).json({ id: result.insertId, classe, classe_id, montant, annee_scolaire, statut_affectation });
 
     } catch (dbErr) {
       console.error('Erreur SQL:', dbErr);
