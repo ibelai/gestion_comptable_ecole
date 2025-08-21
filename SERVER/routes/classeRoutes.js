@@ -50,29 +50,21 @@ router.post('/avec-montant', async (req, res) => {
 });
 
 // GET montants avec filtre année et statut_affectation
-// GET montants avec filtre année et statut_affectation (version améliorée)
 router.get('/montants', async (req, res) => {
   const { annee, statut } = req.query;
   const conn = await pool.getConnection();
-
   try {
-    let query = `
-      SELECT m.id, m.classe AS classe_id, c.nom AS classe_nom, 
-             m.montant, m.annee_scolaire, m.statut_affectation
-      FROM montants_classes m
-      JOIN classes c ON m.classe = c.nom
-      WHERE 1=1
-    `;
+    let query = 'SELECT * FROM montants_classes WHERE 1=1';
     const params = [];
 
     if (annee) {
-      query += ' AND m.annee_scolaire = ?';
+      query += ' AND annee_scolaire = ?';
       params.push(annee);
     }
 
     if (statut) {
       if (statut === 'affecté' || statut === 'non affecté') {
-        query += ' AND m.statut_affectation = ?';
+        query += ' AND statut_affectation = ?';
         params.push(statut);
       } else {
         return res.status(400).json({ error: 'Statut affectation invalide.' });
@@ -81,8 +73,8 @@ router.get('/montants', async (req, res) => {
 
     const [rows] = await conn.query(query, params);
     res.json(rows);
-  } catch (err) {
-    console.error(err);
+  } catch (error) {
+    console.error(error);
     res.status(500).json({ error: 'Erreur serveur' });
   } finally {
     conn.release();
@@ -91,28 +83,48 @@ router.get('/montants', async (req, res) => {
 
 // POST un montant
 router.post('/montants', async (req, res) => {
+  console.log('--- POST /montants ---');
+  console.log('Body reçu:', req.body);
+
   try {
-    const { error, value } = montantSchema.validate(req.body);
-    if (error) return res.status(400).json({ error: error.details[0].message });
+    // 1️⃣ Validation avec Joi
+    const { error, value } = montantSchema.validate(req.body, { abortEarly: false });
+    if (error) {
+      console.log('Erreur validation Joi:', error.details.map(d => d.message));
+      return res.status(400).json({ error: error.details.map(d => d.message).join(', ') });
+    }
 
     const { classe, montant, annee_scolaire, statut_affectation } = value;
+    console.log('Valeurs validées:', { classe, montant, annee_scolaire, statut_affectation });
 
+    // 2️⃣ Connexion à la base
     const conn = await pool.getConnection();
+    console.log('Connexion DB OK');
 
-    const [result] = await conn.query(
-      `INSERT INTO montants_classes (classe, montant, annee_scolaire, statut_affectation) VALUES (?, ?, ?, ?)`,
-      [classe, montant, annee_scolaire, statut_affectation]
-    );
+    try {
+      // 3️⃣ Insertion dans la table
+      const [result] = await conn.query(
+        `INSERT INTO montants_classes (classe, montant, annee_scolaire, statut_affectation) VALUES (?, ?, ?, ?)`,
+        [classe, montant, annee_scolaire, statut_affectation]
+      );
 
-    conn.release();
+      console.log('Insertion réussie, ID:', result.insertId);
+      res.status(201).json({ id: result.insertId, classe, montant, annee_scolaire, statut_affectation });
 
-    res.status(201).json({ id: result.insertId, classe, montant, annee_scolaire, statut_affectation });
-  } catch (err) {
-    console.error(err);
-    if (err.code === 'ER_DUP_ENTRY') {
-      return res.status(400).json({ error: 'Ce montant existe déjà pour cette classe et année scolaire.' });
+    } catch (dbErr) {
+      console.error('Erreur SQL:', dbErr);
+      if (dbErr.code === 'ER_DUP_ENTRY') {
+        return res.status(400).json({ error: 'Ce montant existe déjà pour cette classe et année scolaire.' });
+      }
+      res.status(500).json({ error: dbErr.message || 'Erreur serveur SQL' });
+    } finally {
+      conn.release();
+      console.log('Connexion DB fermée');
     }
-    res.status(500).json({ error: 'Erreur serveur' });
+
+  } catch (err) {
+    console.error('Erreur serveur générale:', err);
+    res.status(500).json({ error: err.message || 'Erreur serveur inconnue' });
   }
 });
 

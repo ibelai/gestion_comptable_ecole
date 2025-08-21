@@ -25,7 +25,7 @@ const API_URL =process.env.REACT_APP_API_URL;
 
   const avatarUrl = user?.avatar
     ? `${API_URL}/uploads/avatars/${user.avatar}`
-    : "/default-avatar.png";
+    : "";
 
   return (
     <Navbar
