@@ -6,7 +6,7 @@ import 'jspdf-autotable';
 export default function ElevesList() {
   const [etape, setEtape] = useState(1);
   const token = localStorage.getItem('token');
-const API_URL = process.env.REACT_APP_API_URL;
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:1000';
   const [matricule, setMatricule] = useState('');
   const [nom, setNom] = useState('');
   const [prenom, setPrenom] = useState('');
@@ -56,10 +56,15 @@ const API_URL = process.env.REACT_APP_API_URL;
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [resClasses, resMontants] = await Promise.all([
-          axios.get(`${API_URL}/api/classes`),
-          axios.get(`${API_URL}/api/classes/montants`)
-        ]);
+       const [resClasses, resMontants] = await Promise.all([
+  axios.get(`${API_URL}/api/classes/`, {
+    headers: { Authorization: `Bearer ${token}` }
+  }),
+  axios.get(`${API_URL}/api/classes/montants`, {
+    headers: { Authorization: `Bearer ${token}` }
+  })
+]);
+
         setClasses(resClasses.data);
         setMontantsClasses(resMontants.data);
       } catch (err) {

@@ -22,7 +22,7 @@ const ElevesForm = () => {
     matricule: ''
   });
   const [loading, setLoading] = useState(false);
-const API_URL = process.env.REACT_APP_API_URL;
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:1000'; // Assurez-vous que cette variable d'environnement est définie
   const token = localStorage.getItem('token');
 
   // Fonction pour récupérer les élèves avec les filtres
@@ -34,7 +34,8 @@ const API_URL = process.env.REACT_APP_API_URL;
       if (anneeFilter.trim()) params.annee_scolaire = anneeFilter.trim();
       if (affectationFilter.trim()) params.statut_affectation = affectationFilter.trim();
 
-      const res = await axios.get(`{${API_URL}/api/eleves/avec-montants`, {
+     const res = await axios.get(`${API_URL}/api/eleves/avec-montants`, {
+
         params,
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -61,7 +62,8 @@ const API_URL = process.env.REACT_APP_API_URL;
   // Récupérer la liste des années scolaires
   const fetchAnnees = async () => {
     try {
-      const res = await axios.get(`£${API_URL}/api/eleves/annees-scolaires`, {
+     const res = await axios.get(`${API_URL}/api/eleves/annees-scolaires`, {
+
         headers: { Authorization: `Bearer ${token}` },
       });
       setAnnees(res.data);

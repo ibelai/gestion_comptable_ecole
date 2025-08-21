@@ -17,7 +17,7 @@ router.get('/', async (req, res) => {
 });
 
 // POST une nouvelle classe avec montant (transaction)
-router.post('/classes/avec-montant', async (req, res) => {
+router.post('/avec-montant', async (req, res) => {
   const { nom, montant, annee_scolaire, statut_affectation } = req.body;
   const conn = await pool.getConnection();
   try {
@@ -50,21 +50,29 @@ router.post('/classes/avec-montant', async (req, res) => {
 });
 
 // GET montants avec filtre année et statut_affectation
+// GET montants avec filtre année et statut_affectation (version améliorée)
 router.get('/montants', async (req, res) => {
   const { annee, statut } = req.query;
   const conn = await pool.getConnection();
+
   try {
-    let query = 'SELECT * FROM montants_classes WHERE 1=1';
+    let query = `
+      SELECT m.id, m.classe AS classe_id, c.nom AS classe_nom, 
+             m.montant, m.annee_scolaire, m.statut_affectation
+      FROM montants_classes m
+      JOIN classes c ON m.classe = c.nom
+      WHERE 1=1
+    `;
     const params = [];
 
     if (annee) {
-      query += ' AND annee_scolaire = ?';
+      query += ' AND m.annee_scolaire = ?';
       params.push(annee);
     }
 
     if (statut) {
       if (statut === 'affecté' || statut === 'non affecté') {
-        query += ' AND statut_affectation = ?';
+        query += ' AND m.statut_affectation = ?';
         params.push(statut);
       } else {
         return res.status(400).json({ error: 'Statut affectation invalide.' });
@@ -73,8 +81,8 @@ router.get('/montants', async (req, res) => {
 
     const [rows] = await conn.query(query, params);
     res.json(rows);
-  } catch (error) {
-    console.error(error);
+  } catch (err) {
+    console.error(err);
     res.status(500).json({ error: 'Erreur serveur' });
   } finally {
     conn.release();
