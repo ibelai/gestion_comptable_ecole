@@ -8,7 +8,7 @@ function Login({ onLoginSuccess }) {
   const [error, setError] = useState("");
 
   const navigate = useNavigate();
-const API_URL =process.env.REACT_APP_API_URL;
+const API_URL =process.env.REACT_APP_API_URL || "http://localhost:1000"; // Assurez-vous que cette variable d'environnement est définie
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
