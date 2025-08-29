@@ -12,9 +12,12 @@ export default function PaiementSoldeModal({ eleveId, show, onClose }) {
   const [message, setMessage] = useState('');
   const [chargement, setChargement] = useState(false);
   const anneeScolaire = "2024-2025";
-const API_URL = process.env.REACT_APP_API_URL;
+  const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:1000';
+
   useEffect(() => {
-    if (!eleveId || !show) return;
+     console.log("eleveId reçu :", eleveId, "show :", show);
+  if (!eleveId || !show) return;
+    
     axios.get(`${API_URL}/api/eleves/${eleveId}/solde?annee_scolaire=${anneeScolaire}`, {
       headers: { Authorization: `Bearer ${token}` }
     })
@@ -53,7 +56,8 @@ const API_URL = process.env.REACT_APP_API_URL;
         mode_paiement: modePaiement,
         recu: numeroRecu,
         date_paiement: new Date().toISOString().split('T')[0],
-        annee_scolaire: anneeScolaire
+        annee_scolaire: anneeScolaire,
+        description: "Versement" // 👈 ici tu peux aussi mettre "Frais scolaires", etc.
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -61,7 +65,7 @@ const API_URL = process.env.REACT_APP_API_URL;
       genererRecu({
         nom: eleve.nom,
         prenom: eleve.prenom,
-        classe: eleve.classe_nom,
+        classe: eleve.classe,
         montant_du: eleve.montant_du || 0,
         reste: Math.max(0, eleve.reste_a_payer - montantFloat),
         montant: montantFloat,
@@ -92,6 +96,9 @@ const API_URL = process.env.REACT_APP_API_URL;
       setChargement(false);
     }
   };
+const formatMontant = (val) => {
+  return Math.round(val); // ou Math.floor / toFixed(0)
+};
 
   const genererRecu = (paiement) => {
     const doc = new jsPDF();
@@ -120,19 +127,20 @@ const API_URL = process.env.REACT_APP_API_URL;
       y += 8;
       doc.text(`Reçu N° : ${paiement.numero}`, 10, y);
 
-      doc.autoTable({
-        startY: y + 15,
-        head: [['Description', 'Montant']],
-        body: [
-          ['Montant dû', `${paiement.montant_du} FCFA`],
-          ['Déjà payé', `${paiement.totalPaye - paiement.montant} FCFA`],
-          ['Paiement actuel', `${paiement.montant} FCFA`],
-          ['Reste à payer', `${paiement.reste} FCFA`],
-        ],
-        theme: 'grid',
-        styles: { fontSize: 11 },
-        headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
-      });
+     doc.autoTable({
+  startY: y + 15,
+  head: [['Description', 'Montant']],
+  body: [
+    ['Montant dû', `${formatMontant(paiement.montant_du)} FCFA`],
+    ['Déjà payé', `${formatMontant(paiement.totalPaye - paiement.montant)} FCFA`],
+    ['Paiement actuel', `${formatMontant(paiement.montant)} FCFA`],
+    ['Reste à payer', `${formatMontant(paiement.reste)} FCFA`],
+  ],
+  theme: 'grid',
+  styles: { fontSize: 11 },
+  headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
+});
+
 
       const pageHeight = doc.internal.pageSize.height;
       doc.setFontSize(10);
@@ -161,10 +169,27 @@ const API_URL = process.env.REACT_APP_API_URL;
               <div>Chargement...</div>
             ) : (
               <>
-                <h6><strong>{eleve.nom} {eleve.prenom}</strong> — {eleve.classe_nom}</h6>
+                <h6><strong>{eleve.nom} {eleve.prenom}</strong> — {eleve.classe}</h6>
                 <p><strong>Montant dû :</strong> {eleve.montant_du} FCFA</p>
                 <p><strong>Déjà payé :</strong> {eleve.total_paye} FCFA</p>
                 <p><strong>Reste à payer :</strong> {eleve.reste_a_payer} FCFA</p>
+
+                {/* ✅ Cases des frais spécifiques */}
+                <div className="mb-3">
+                  <label><strong>Frais spécifiques :</strong></label>
+                  <div className="form-check">
+                    <input type="checkbox" className="form-check-input" checked={eleve?.frais_scolaires} readOnly />
+                    <label className="form-check-label">Frais scolaires</label>
+                  </div>
+                  <div className="form-check">
+                    <input type="checkbox" className="form-check-input" checked={eleve?.droit_examen} readOnly />
+                    <label className="form-check-label">Droit examen</label>
+                  </div>
+                  <div className="form-check">
+                    <input type="checkbox" className="form-check-input" checked={eleve?.papiers} readOnly />
+                    <label className="form-check-label">Papiers/rames</label>
+                  </div>
+                </div>
 
                 {eleve.reste_a_payer <= 0 && (
                   <div className="alert alert-success">Paiement complet effectué pour cette année scolaire.</div>
@@ -174,7 +199,7 @@ const API_URL = process.env.REACT_APP_API_URL;
                   <label>Montant à payer maintenant :</label>
                   <input type="number" className="form-control" value={montant}
                     onChange={(e) => setMontant(e.target.value)}
-                    min="0" max={eleve.reste_a_payer} //disabled={eleve.reste_a_payer <= 0}
+                    min="0" max={eleve.reste_a_payer}
                   />
                 </div>
 

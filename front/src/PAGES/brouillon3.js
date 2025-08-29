@@ -59,43 +59,27 @@ const ElevesForm = () => {
 
  const fetchClasses = async () => {
   try {
-    
-    const res = await axios.get(`${API_URL}/api/classes`, {
+    const res = await axios.get(`${API_URL}/api/montants-classes`, {
       headers: { Authorization: `Bearer ${token}` }
     });
-    const data = Array.isArray(res.data) ? res.data : [];
-    setClasses(data.map(c => ({
-      id: c.classe_id || c.id,
-      nom: c.nom
-    })));
+    setClasses(res.data);
   } catch (err) {
     console.error('Erreur chargement classes:', err);
     alert("Erreur lors du chargement des classes.");
   }
 };
 
-const fetchAnnees = async () => {
-  try {
-    const res = await axios.get(`${API_URL}/api/eleves/annees-scolaires`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (Array.isArray(res.data)) {
-      // Si c’est déjà ["2023-2024", "2024-2025"]
-      if (typeof res.data[0] === "string") {
-        setAnnees(res.data);
-      } else {
-        // Si c’est [{annee_scolaire:"2024-2025"}]
-        setAnnees(res.data.map(a => a.annee_scolaire));
-      }
+  const fetchAnnees = async () => {
+    try {
+      const res = await axios.get(`${API_URL}/api/eleves/annees-scolaires`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setAnnees(res.data.map(a => a.annee_scolaire));
+    } catch (err) {
+      console.error('Erreur chargement années:', err);
+      alert("Erreur lors du chargement des années scolaires.");
     }
-  } catch (err) {
-    console.error('Erreur chargement années:', err);
-    alert("Erreur lors du chargement des années scolaires.");
-  }
-};
-;
-
-  
+  };
 
   useEffect(() => {
     fetchEleves();
@@ -145,27 +129,19 @@ const fetchAnnees = async () => {
     }
   };
 
- const supprimerEleve = async (id) => {
-  if (!window.confirm("Voulez-vous vraiment supprimer cet élève ?")) return;
-
-  const token = localStorage.getItem("token"); // <-- récupère le token ici
-  if (!token) {
-    alert("Vous devez être connecté pour effectuer cette action !");
-    return;
-  }
-
-  try {
-    await axios.delete(`${API_URL}/api/eleves/${id}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    alert("Élève supprimé avec succès !");
-    fetchEleves(); // rafraîchit la liste
-  } catch (err) {
-    console.error("Erreur suppression élève :", err);
-    alert("Erreur lors de la suppression.");
-  }
-};
-
+  const supprimerEleve = async (id) => {
+    if (!window.confirm("Voulez-vous vraiment supprimer cet élève ?")) return;
+    try {
+      await axios.delete(`${API_URL}/api/eleves/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      alert("Élève supprimé avec succès !");
+      fetchEleves();
+    } catch (err) {
+      console.error("Erreur suppression élève :", err);
+      alert("Erreur lors de la suppression.");
+    }
+  };
 
   // Totaux sécurisés
   const totalAPayer = Array.isArray(eleves) ? eleves.reduce((sum, e) => sum + Number(e.montant_total || 0), 0) : 0;
@@ -178,15 +154,13 @@ const fetchAnnees = async () => {
 
       {/* Filtres */}
       <div className="row g-3 mb-3">
-    <select className="form-select" value={classeFilter} onChange={(e) => setClasseFilter(e.target.value)}>
-  <option value="">-- Toutes les classes --</option>
-  {classes.map(c => <option key={c.id} value={c.nom}>{c.nom}</option>)}
-</select>
-
-
-
-
-
+        <div className="col-md-3">
+          <label className="form-label">Classe</label>
+          <select className="form-select" value={classeFilter} onChange={(e) => setClasseFilter(e.target.value)}>
+            <option value="">-- Toutes les classes --</option>
+            {classes.map(c => <option key={c.id} value={c.nom}>{c.nom}</option>)}
+          </select>
+        </div>
         <div className="col-md-3">
           <label className="form-label">Année scolaire</label>
           <select className="form-select" value={anneeFilter} onChange={(e) => setAnneeFilter(e.target.value)}>
@@ -252,17 +226,8 @@ const fetchAnnees = async () => {
                   <td><span className={`badge ${e.montant_restant === 0 ? 'bg-success' : e.montant_restant < e.montant_total ? 'bg-warning text-dark' : 'bg-danger'}`}>{e.montant_restant} FCFA</span></td>
                   <td>
                     <div className="d-grid gap-2 d-md-flex">
-                     <button
-  className="btn btn-sm btn-outline-info w-100"
-  onClick={() => {
-    console.log("Eleve cliqué :", e);
-    setEleveSelectionne(e);
-  }}
->
-  Paiement
-</button>
-
-<button className="btn btn-sm btn-outline-warning w-100" onClick={() => ouvrirModification(e)}>Modifier</button>
+                      <button className="btn btn-sm btn-outline-info w-100" onClick={() => setEleveSelectionne(e.id)}>Paiement</button>
+                      <button className="btn btn-sm btn-outline-warning w-100" onClick={() => ouvrirModification(e)}>Modifier</button>
                       <button className="btn btn-sm btn-outline-danger w-100" onClick={() => supprimerEleve(e.id)}>Supprimer</button>
                     </div>
                   </td>
@@ -285,15 +250,16 @@ const fetchAnnees = async () => {
       </div>
 
       {/* Modal Paiement */}
-     <PaiementSolde
-  eleveId={eleveSelectionne?.id} // maintenant l'ID existe
-  show={!!eleveSelectionne}
-  onClose={() => { setEleveSelectionne(null); fetchEleves(); }}
-/>
-
+      {eleveSelectionne && (
+        <PaiementSolde
+          eleveId={eleveSelectionne}
+          show={true}
+          onClose={() => { setEleveSelectionne(null); fetchEleves(); }}
+        />
+      )}
 
       {/* Modale modification */}
-       {eleveAModifier && (
+      {eleveAModifier && (
         <>
           <div className="modal show d-block" tabIndex="-1" role="dialog" aria-modal="true">
             <div className="modal-dialog modal-lg" role="document">
@@ -335,33 +301,18 @@ const fetchAnnees = async () => {
                       </div>
                       <div className="col-md-6">
                         <label className="form-label">Classe</label>
-                       <select name="classe_id" className="form-select" value={formModif.classe_id} onChange={handleChangeModif} required>
-  <option value="">-- Sélectionner --</option>
-  {classes.map(c => <option key={c.id} value={c.id}>{c.nom}</option>)}
-</select>
-
+                        <select name="classe_id" className="form-select" value={formModif.classe_id} onChange={handleChangeModif} required>
+                          <option value="">-- Sélectionner --</option>
+                          {classes.map(c => <option key={c.id} value={c.id}>{c.nom}</option>)}
+                        </select>
                       </div>
                       <div className="col-md-6">
                         <label className="form-label">Trimestre</label>
-                        <select name="trimestre" className="form-select" value={formModif.trimestre} onChange={handleChangeModif} required>
-                          <option value="">-- Sélectionner --</option>
-                          <option value="1">1er trimestre</option>
-                          <option value="2">2ème trimestre</option>
-                          <option value="3">3ème trimestre</option>
-                        </select>
+                        <input type="text" name="trimestre" className="form-control" value={formModif.trimestre} onChange={handleChangeModif} required />
                       </div>
                       <div className="col-md-6">
                         <label className="form-label">Matricule</label>
                         <input type="text" name="matricule" className="form-control" value={formModif.matricule} onChange={handleChangeModif} required />
-                      </div>
-                      <div className="col-md-6">
-                        <label className="form-label">Année scolaire</label>
-                        <select name="annee_scolaire" className="form-select" value={formModif.annee_scolaire} onChange={handleChangeModif} required>
-                          <option value="">-- Sélectionner --</option>
-                          {annees.map((a, idx) => (
-                            <option key={`${a}-${idx}`} value={a}>{a}</option>
-                          ))}
-                        </select>
                       </div>
                     </div>
                     <div className="modal-footer mt-3">

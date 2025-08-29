@@ -15,7 +15,7 @@ export default function ElevesList() {
   const [dateNaissance, setDateNaissance] = useState('');
   const [genre, setGenre] = useState('');
   const [classeId, setClasseId] = useState('');
-  const [statutAffectation, setStatutAffectation] = useState('affecté');
+  const [statutAffectation, setStatutAffectation] = useState('');
 
   // Champs paiement
   const [anneeScolaire, setAnneeScolaire] = useState('');
@@ -41,10 +41,11 @@ export default function ElevesList() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-       const [resClasses, resMontants] = await Promise.all([
-          axios.get(`${API_URL}/api/classes`, { headers: { Authorization: `Bearer ${token}` } }),
-          axios.get(`${API_URL}/api/montants-classes`, { headers: { Authorization: `Bearer ${token}` } })
-        ]); setClasses(resClasses.data);
+        const [resClasses, resMontants] = await Promise.all([
+          axios.get(`${API_URL}/api/classes`),
+          axios.get(`${API_URL}/api/montants-classes`)
+        ]);
+        setClasses(resClasses.data);
         setMontantsClasses(resMontants.data);
       } catch (err) {
         console.error('Erreur lors du chargement des données:', err);
@@ -59,11 +60,10 @@ export default function ElevesList() {
       return;
     }
     const classeNom = classes.find(c => c.id === parseInt(classeId))?.nom;
-    
     const montant = montantsClasses.find(m =>
       m.classe === classeNom &&
       m.annee_scolaire === anneeScolaire &&
-     m.statut_affectation.toLowerCase() === statutAffectation.toLowerCase()
+      m.statut_affectation === statutAffectation
     );
     setMontantDuClasse(montant ? parseInt(montant.montant, 10) : 0);
   }, [classeId, anneeScolaire, statutAffectation, classes, montantsClasses]);
@@ -81,7 +81,7 @@ export default function ElevesList() {
   };
 
   const calculerMontantTotal = () => {
-    return montantDuClasse 
+    return montantDuClasse + calculerFraisScolaire() + calculerDroitsExamen();
   };
 
   const genererRecu = (paiement) => {
@@ -143,7 +143,7 @@ export default function ElevesList() {
     img.onerror = () => alert("Erreur : impossible de charger le logo.");
   };
 
-  
+  // Dans votre fonction handleSubmit, remplacez la partie paiementData par :
 
 const handleSubmit = async (e) => {
   e.preventDefault();
@@ -186,29 +186,17 @@ const handleSubmit = async (e) => {
     console.log('Droits examen:', droitsExamenMontant);
     console.log('Frais scolaire:', fraisScolaireMontant);
 
-     const classeIdValide = parseInt(classeId);
-  if (isNaN(classeIdValide)) {
-    alert("Veuillez sélectionner une classe avant d’enregistrer l’élève.");
-    return;
-  }
-
-  try {
-    const resEleve = await axios.post(
-      `${API_URL}/api/eleves`,
-      {
+    try {
+      const resEleve = await axios.post(`${API_URL}/api/eleves`, {
+        matricule: matricule.trim(),
         nom: nom.trim(),
         prenom: prenom.trim(),
-        matricule: matricule.trim(),
-        classe_id: classeIdValide,
-        statut_affectation: statutAffectation || "affecté",
-        trimestre: isNaN(parseInt(trimestre)) ? 1 : parseInt(trimestre),
         date_naissance: dateNaissance || null,
-        annee_scolaire: anneeScolaire.trim()
-      },
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
-
-   
+        genre: genre || null,
+        statut_affectation: statutAffectation,
+        classe_id: parseInt(classeId, 10),
+        trimestre
+      }, { headers: { Authorization:` Bearer ${token}` } });
 
       // CORRECTION : Données de paiement avec conversion explicite
       const paiementData = {
@@ -329,18 +317,14 @@ const handleSubmit = async (e) => {
                     <option value="F">Féminin</option>
                   </select>
                 </div>
-                <div className="col-md-3 mb-3">
-                <label className="form-label">Statut d'affectation</label>
-                <select 
-                  className="form-select" 
-                  value={statutAffectation} 
-                  onChange={e => setStatutAffectation(e.target.value)}
-                >
-                  <option value="affecté">Affecté</option>
-                  <option value="non affecté">Non affecté</option>
-                </select>
-              </div>
-            
+                <div className="mb-3">
+                  <label className="form-label">Statut d'affectation</label>
+                  <select className="form-select" value={statutAffectation} onChange={e => setStatutAffectation(e.target.value)} required>
+                    <option value="">--Choisir--</option>
+                    <option value="affecté">Affecté (État)</option>
+                    <option value="non affecté">Non Affecté</option>
+                  </select>
+                </div>
                 <div className="mb-3">
                   <label className="form-label">Classe</label>
                   <select className="form-select" value={classeId} onChange={e => setClasseId(e.target.value)} required>

@@ -1,0 +1,92 @@
+/* eleveForm.css */
+
+/* Filtres */
+.form-label {
+  font-weight: 600;
+}
+
+.form-select, .form-control {
+  border-radius: 0.5rem;
+  transition: 0.3s all;
+}
+
+.form-select:focus, .form-control:focus {
+  border-color: #6f42c1;
+  box-shadow: 0 0 0 0.2rem rgba(111, 66, 193, 0.25);
+}
+
+/* Tableau */
+.table {
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+.table thead {
+  background-color: #e9ecef;
+  font-weight: 600;
+  text-align: center;
+}
+
+.table-hover tbody tr:hover {
+  background-color: #f1f3f5;
+  transition: 0.2s;
+}
+
+.badge {
+  font-weight: 600;
+  transition: transform 0.2s;
+}
+
+.badge:hover {
+  transform: scale(1.1);
+}
+
+/* Boutons */
+.btn-outline-info {
+  color: #0dcaf0;
+  border-color: #0dcaf0;
+}
+.btn-outline-info:hover {
+  background-color: #0dcaf0;
+  color: white;
+}
+
+.btn-outline-warning {
+  color: #ffc107;
+  border-color: #ffc107;
+}
+.btn-outline-warning:hover {
+  background-color: #ffc107;
+  color: white;
+}
+
+.btn-outline-danger {
+  color: #dc3545;
+  border-color: #dc3545;
+}
+.btn-outline-danger:hover {
+  background-color: #dc3545;
+  color: white;
+}
+
+/* Modal */
+.modal-content {
+  border-radius: 1rem;
+  overflow: hidden;
+  box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.15);
+}
+
+.modal-header {
+  background: linear-gradient(90deg, #6f42c1, #7952b3);
+  color: white;
+}
+
+.modal-footer .btn {
+  border-radius: 0.5rem;
+}
+
+/* Spinner loader */
+.spinner-border {
+  width: 2rem;
+  height: 2rem;
+}

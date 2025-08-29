@@ -7,7 +7,7 @@ import {
 function AdminDashboard() {
   const [stats, setStats] = useState(null);
   const [error, setError] = useState('');
-const API_URL = process.env.REACT_APP_API_URL || 'http://locahost:1000';
+const API_URL =  'http://localhost:1000';
   useEffect(() => {
     const fetchStats = async () => {
       try {

@@ -22,7 +22,7 @@ function RegisterUser() {
 
     try {
       const token = localStorage.getItem("token");
-      await axios.post("http://localhost:5000/api/users/register", formData, {
+      await axios.post("http://localhost:1000/api/users/register", formData, {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "multipart/form-data",

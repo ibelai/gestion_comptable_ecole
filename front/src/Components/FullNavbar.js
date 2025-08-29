@@ -16,7 +16,7 @@ import {
 const FullNavbar = ({ user, onLogout }) => {
   const location = useLocation();
   const [expanded, setExpanded] = useState(false);
-const API_URL =process.env.REACT_APP_API_URL;
+const API_URL ="http://localhost:1000";
   const commonLinks = [
     { path: "/tableau-de-bord", label: "Tableau de bord", icon: <FaTachometerAlt /> },
     { path: "/eleves", label: "Gestion des élèves", icon: <FaUserGraduate /> },

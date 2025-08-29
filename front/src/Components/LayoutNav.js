@@ -16,7 +16,7 @@ const LayoutNav = ({ children }) => {
       }
 
       try {
-        const res = await axios.get("http://localhost:5000/api/profil", {
+        const res = await axios.get("http://localhost:1000/api/profil", {
           headers: { Authorization: `Bearer ${token}` },
         });
         setUser(res.data);
