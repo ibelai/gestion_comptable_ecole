@@ -9,7 +9,7 @@ export default function PaiementForm() {
     trimestre: "",
     annee_scolaire: "",
   });
-const API_URL = process.env.REACT_APP_API_URL;
+   const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:1000';
   const fetchPaiements = async () => {
     try {
       const res = await axios.get(`${API_URL}/api/paiements`, { params: filters });

@@ -3,7 +3,7 @@ import axios from "axios";
 
 const token = localStorage.getItem("token");
 const api = axios.create({
-  baseURL: "http://localhost:1000/api",
+  baseURL:   process.env.REACT_APP_API_URL || 'http://localhost:1000',
   headers: { Authorization: `Bearer ${token}` }
 });
 

@@ -5,7 +5,7 @@ import axios from "axios";
 const UserProfile = () => {
   const [user, setUser] = useState(null);
   const token = localStorage.getItem("token");
-const API_URL = process.env.REACT_APP_API_URL;
+   const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:1000';
   useEffect(() => {
     const fetchUser = async () => {
       try {

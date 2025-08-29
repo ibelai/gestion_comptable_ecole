@@ -8,7 +8,7 @@ function RegisterUser() {
   const [role, setRole] = useState("comptable");
   const [avatar, setAvatar] = useState(null);
   const [message, setMessage] = useState("");
-
+  const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:1000';
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -22,7 +22,7 @@ function RegisterUser() {
 
     try {
       const token = localStorage.getItem("token");
-      await axios.post("http://localhost:1000/api/users/register", formData, {
+      await axios.post(`${API_URL}/api/users/register`, formData, {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "multipart/form-data",
