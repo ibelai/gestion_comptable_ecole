@@ -12,7 +12,7 @@ const HistoriquePaiements = () => {
   const [paiements, setPaiements] = useState([]);
   const [totalPaye, setTotalPaye] = useState(0);
   const [montantFrais, setMontantFrais] = useState(0);
-   const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:1000';
+   const API_URL = process.env.REACT_APP_API_URL ;
   useEffect(() => {
     const fetchData = async () => {
       try {

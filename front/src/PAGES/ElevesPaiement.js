@@ -3,7 +3,7 @@ import axios from 'axios';
 
 export default function ElevesPaiements() {
   const [eleves, setEleves] = useState([]);
-     const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:1000';
+     const API_URL = process.env.REACT_APP_API_URL;
   const [filtres, setFiltres] = useState({
     classe_id: '',
     annee_scolaire: '2024-2025',

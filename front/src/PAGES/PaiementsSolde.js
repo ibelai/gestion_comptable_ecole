@@ -12,7 +12,7 @@ export default function PaiementSoldeModal({ eleveId, show, onClose }) {
   const [message, setMessage] = useState('');
   const [chargement, setChargement] = useState(false);
   const anneeScolaire = "2024-2025";
-  const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:1000';
+  const API_URL = process.env.REACT_APP_API_URL;
 
   useEffect(() => {
      console.log("eleveId reçu :", eleveId, "show :", show);

@@ -29,7 +29,7 @@ const ElevesForm = () => {
 
 
 
-  const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:1000';
+  const API_URL = process.env.REACT_APP_API_URL;
 
   // Récupérer élèves avec filtres
   const fetchEleves = async () => {

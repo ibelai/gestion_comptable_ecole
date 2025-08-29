@@ -6,7 +6,7 @@ import 'jspdf-autotable';
 export default function ElevesList() {
   const [etape, setEtape] = useState(1);
   const token = localStorage.getItem('token');
-  const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:1000';
+  const API_URL = process.env.REACT_APP_API_URL ;
 
   // Champs élève
   const [matricule, setMatricule] = useState('');

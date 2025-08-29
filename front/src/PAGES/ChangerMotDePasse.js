@@ -8,7 +8,7 @@ const ChangerMotDePasse = () => {
   const [message, setMessage] = useState("");
   const [variant, setVariant] = useState("success");
   const [loading, setLoading] = useState(false);
-const API_URL = process.env.REACT_APP_API_URL  || "http://localhost:1000";
+const API_URL = process.env.REACT_APP_API_URL  ;
   const handleSubmit = async (e) => {
     e.preventDefault();
     setMessage("");

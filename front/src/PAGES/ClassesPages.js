@@ -5,7 +5,7 @@ const ClassesPage = () => {
   const [classes, setClasses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:1000';
+      const API_URL = process.env.REACT_APP_API_URL;
   const [form, setForm] = useState({
     id: null,
     nom: "",

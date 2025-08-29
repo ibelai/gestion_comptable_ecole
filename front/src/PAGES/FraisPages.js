@@ -5,7 +5,7 @@ const FraisPage = () => {
   const [frais, setFrais] = useState([]);
   const [form, setForm] = useState({ type: '', montant: '', classe_id: '', annee_scolaire: '' });
   const [editId, setEditId] = useState(null);
-   const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:1000';
+   const API_URL = process.env.REACT_APP_API_URL ;
   useEffect(() => {
     fetchFrais();
   }, []);

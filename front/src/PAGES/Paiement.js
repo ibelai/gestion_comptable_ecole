@@ -9,7 +9,7 @@ export default function Paiement() {
       annee_scolaire: "2024-2025", // par ex. prérempli, tu peux le modifier
     },
   });
-   const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:1000';
+   const API_URL = process.env.REACT_APP_API_URL ;
   const [showConfirm, setShowConfirm] = useState(false);
   const [eleves, setEleves] = useState([]);
   const [formDataCache, setFormDataCache] = useState(null);
