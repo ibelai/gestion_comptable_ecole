@@ -102,26 +102,28 @@ router.post("/", authorizeRoles("admin", "comptable"), async (req, res) => {
     const montantClassePaye = total_paye + montant_paye;
 
     // 💾 Insertion du paiement
-    const [result] = await db.query(
-      `INSERT INTO paiements 
-       (eleve_id, montant_paye, annee_scolaire, mode_paiement, 
-        frais_scolaire_du, frais_scolaire_paye, 
-        frais_classe_du, frais_classe_paye, 
-        droit_examen_du, droit_examen_paye) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        eleve_id,
-        montant_paye,
-        annee_scolaire,
-        mode_paiement || "espèces",
-        montantFraisScolaire,
-        montantFraisScolairePaye,
-        montantClasse,
-        montantClassePaye,
-        montantDroitsExamen,
-        montantDroitsExamenPaye
-      ]
-    );
+   const [result] = await db.query(
+  `INSERT INTO paiements 
+   (eleve_id, montant_paye, date_paiement, annee_scolaire, mode_paiement, 
+    frais_scolaire_du, frais_scolaire_paye, 
+    frais_classe_du, frais_classe_paye, 
+    droit_examen_du, droit_examen_paye) 
+   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  [
+    eleve_id,
+    montant_paye,
+    new Date().toISOString().split("T")[0], // 📌 ici on ajoute la date
+    annee_scolaire,
+    mode_paiement || "espèces",
+    montantFraisScolaire,
+    montantFraisScolairePaye,
+    montantClasse,
+    montantClassePaye,
+    montantDroitsExamen,
+    montantDroitsExamenPaye
+  ]
+);
+
 
     // 🔖 Génération du reçu PDF
     const paiement = {
