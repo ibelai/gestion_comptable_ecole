@@ -102,27 +102,34 @@ router.post("/", authorizeRoles("admin", "comptable"), async (req, res) => {
     const montantClassePaye = total_paye + montant_paye;
 
     // 💾 Insertion du paiement
-   const [result] = await db.query(
+  const datePaiement = req.body.date_paiement || new Date().toISOString().split("T")[0];
+
+const [result] = await db.query(
   `INSERT INTO paiements 
-   (eleve_id, montant_paye, date_paiement, annee_scolaire, mode_paiement, 
-    frais_scolaire_du, frais_scolaire_paye, 
-    frais_classe_du, frais_classe_paye, 
-    droit_examen_du, droit_examen_paye) 
-   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+   (eleve_id, date_paiement, mode_paiement, montant_du, montant_paye, description,
+    frais_scolaire_du, frais_classe_du, droit_examen_du, papiers_rames_du,
+    frais_scolaire_paye, frais_classe_paye, droit_examen_paye, papiers_rames_paye,
+    annee_scolaire, created_at, updated_at)
+   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
   [
     eleve_id,
-    montant_paye,
-    new Date().toISOString().split("T")[0], // 📌 ici on ajoute la date
-    annee_scolaire,
-    mode_paiement || "espèces",
+    datePaiement,
+    mode_paiement || "Espèces",
+    montantClasse,       // montant total dû
+    montant_paye,        // ce que l’élève vient de payer
+    "Paiement frais scolaires", // ou autre description
     montantFraisScolaire,
-    montantFraisScolairePaye,
     montantClasse,
-    montantClassePaye,
     montantDroitsExamen,
-    montantDroitsExamenPaye
+    0,                   // papiers_rames_du (à définir si applicable)
+    0,                   // frais_scolaire_paye (initialement)
+    total_paye + montant_paye, // frais_classe_paye
+    0,                   // droit_examen_paye
+    0,                   // papiers_rames_paye
+    annee_scolaire
   ]
 );
+
 
 
     // 🔖 Génération du reçu PDF
