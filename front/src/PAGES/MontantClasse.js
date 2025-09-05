@@ -18,7 +18,7 @@ const ClassesPage = () => {
   // Charger les classes
   const fetchClasses = async () => {
     try {
-      const res = await api.get("/montants-classes");
+      const res = await api.get("/api/montants-classes");
       setClasses(res.data);
     } catch (err) {
       console.error(err.response?.data || err.message);

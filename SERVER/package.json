@@ -22,8 +22,10 @@
     "jsonwebtoken": "^9.0.2",
     "multer": "^2.0.0",
     "mysql2": "^3.14.1",
+    "nodemailer": "^7.0.5",
     "nodemon": "^3.1.10",
-    "pdfkit": "^0.17.1"
+    "pdfkit": "^0.17.1",
+    "twilio": "^5.8.2"
   },
   "devDependencies": {
     "parcel-bundler": "^1.12.5"

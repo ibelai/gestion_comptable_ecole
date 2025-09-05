@@ -6,7 +6,7 @@ import 'jspdf-autotable';
 export default function ElevesList() {
   const [etape, setEtape] = useState(1);
   const token = localStorage.getItem('token');
-  const API_URL = process.env.REACT_APP_API_URL ;
+  const API_URL = process.env.REACT_APP_API_URL;
 
   // Champs élève
   const [matricule, setMatricule] = useState('');
@@ -23,11 +23,12 @@ export default function ElevesList() {
   const [datePaiement, setDatePaiement] = useState('');
   const [modePaiement, setModePaiement] = useState('');
   const [montantPaye, setMontantPaye] = useState('');
-  
+
   // Nouvelles cases à cocher
   const [droitsExamen, setDroitsExamen] = useState(false);
   const [fraisScolaire, setFraisScolaire] = useState(false);
   const [papiersRames, setPapiersRames] = useState(false);
+  const [notifierParent, setNotifierParent] = useState(false); // ✅ Nouvelle option
 
   // Données classes
   const [classes, setClasses] = useState([]);
@@ -35,16 +36,16 @@ export default function ElevesList() {
   const [montantDuClasse, setMontantDuClasse] = useState(0);
   
   const classeIdNom = classes.find(c => c.id === parseInt(classeId))?.nom;
-
   const FRAIS_SCOLAIRE = 17500;
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-       const [resClasses, resMontants] = await Promise.all([
+        const [resClasses, resMontants] = await Promise.all([
           axios.get(`${API_URL}/api/classes`, { headers: { Authorization: `Bearer ${token}` } }),
           axios.get(`${API_URL}/api/montants-classes`, { headers: { Authorization: `Bearer ${token}` } })
-        ]); setClasses(resClasses.data);
+        ]);
+        setClasses(resClasses.data);
         setMontantsClasses(resMontants.data);
       } catch (err) {
         console.error('Erreur lors du chargement des données:', err);
@@ -59,16 +60,14 @@ export default function ElevesList() {
       return;
     }
     const classeNom = classes.find(c => c.id === parseInt(classeId))?.nom;
-    
     const montant = montantsClasses.find(m =>
       m.classe === classeNom &&
       m.annee_scolaire === anneeScolaire &&
-     m.statut_affectation.toLowerCase() === statutAffectation.toLowerCase()
+      m.statut_affectation.toLowerCase() === statutAffectation.toLowerCase()
     );
     setMontantDuClasse(montant ? parseInt(montant.montant, 10) : 0);
   }, [classeId, anneeScolaire, statutAffectation, classes, montantsClasses]);
 
-  // Calcul des montants basé sur les cases cochées
   const calculerDroitsExamen = () => {
     if (!droitsExamen) return 0;
     if (classeIdNom === "3ème" || classeIdNom === "3EME") return 3000;
@@ -76,13 +75,8 @@ export default function ElevesList() {
     return 0;
   };
 
-  const calculerFraisScolaire = () => {
-    return fraisScolaire ? FRAIS_SCOLAIRE : 0;
-  };
-
-  const calculerMontantTotal = () => {
-    return montantDuClasse 
-  };
+  const calculerFraisScolaire = () => fraisScolaire ? FRAIS_SCOLAIRE : 0;
+  const calculerMontantTotal = () => montantDuClasse + calculerFraisScolaire() + calculerDroitsExamen();
 
   const genererRecu = (paiement) => {
     const doc = new jsPDF();
@@ -97,7 +91,7 @@ export default function ElevesList() {
       doc.setFont("helvetica", "normal");
       doc.text("Reçu de paiement", 105, 30, null, null, 'center');
       doc.text(`Matricule : ${paiement.matricule}`, 10, 50);
-      doc.text(`Nom de l'élève : ${paiement.nom} ${paiement.prenom}`, 10, 58);
+      doc.text(`Nom : ${paiement.nom} ${paiement.prenom}`, 10, 58);
       doc.text(`Classe : ${paiement.classe}`, 10, 66);
       doc.text(`Année scolaire : ${paiement.anneeScolaire}`, 10, 74);
       doc.text(`Trimestre : ${paiement.trimestre}`, 10, 82);
@@ -107,23 +101,10 @@ export default function ElevesList() {
       const tableBody = [
         ['Montant dû (classe)', `${montantDuClasse} FCFA`],
       ];
-
-      if (fraisScolaire) {
-        tableBody.push(['Frais scolaires', `${FRAIS_SCOLAIRE} FCFA`]);
-      }
-
-      if (droitsExamen && paiement.droitsExamen > 0) {
-        tableBody.push(['Droits d\'examen', `${paiement.droitsExamen} FCFA`]);
-      }
-
-      tableBody.push(
-        ['Montant payé', `${paiement.totalPaye} FCFA`],
-        ['Reste à payer', `${paiement.reste} FCFA`]
-      );
-
-      if (papiersRames) {
-        tableBody.push(['Papiers rames', 'Oui']);
-      }
+      if (fraisScolaire) tableBody.push(['Frais scolaires', `${FRAIS_SCOLAIRE} FCFA`]);
+      if (droitsExamen && paiement.droitsExamen > 0) tableBody.push(['Droits d\'examen', `${paiement.droitsExamen} FCFA`]);
+      tableBody.push(['Montant payé', `${paiement.totalPaye} FCFA`], ['Reste à payer', `${paiement.reste} FCFA`]);
+      if (papiersRames) tableBody.push(['Papiers rames', 'Oui']);
 
       doc.autoTable({
         startY: 110,
@@ -143,156 +124,112 @@ export default function ElevesList() {
     img.onerror = () => alert("Erreur : impossible de charger le logo.");
   };
 
-  
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (etape === 1) {
+      if (!matricule || !nom || !prenom || !classeId) {
+        alert('Merci de remplir le matricule, nom, prénom et la classe');
+        return;
+      }
+      setEtape(2);
+    } else {
+      if (!datePaiement || !anneeScolaire || !modePaiement || !trimestre) {
+        alert('Veuillez remplir tous les champs requis, y compris le trimestre');
+        return;
+      }
 
-const handleSubmit = async (e) => {
-  e.preventDefault();
-  if (etape === 1) {
-    if (!matricule || !nom || !prenom || !classeId) {
-      alert('Merci de remplir le matricule, nom, prénom et la classe');
-      return;
-    }
-    setEtape(2);
-  } else {
-    if (!datePaiement || !anneeScolaire || !modePaiement || !trimestre) {
-      alert('Veuillez remplir tous les champs requis, y compris le trimestre');
-      return;
-    }
+      const montantPayeNum = parseFloat(montantPaye) || 0;
+      const droitsExamenMontant = calculerDroitsExamen();
+      const fraisScolaireMontant = calculerFraisScolaire();
+      const totalMontantDu = calculerMontantTotal();
+      const reste = totalMontantDu - montantPayeNum;
 
-    // CORRECTION : Conversion explicite en nombres
-    const montantPayeNum = parseFloat(montantPaye) || 0;
-    const droitsExamenMontant = calculerDroitsExamen();
-    const fraisScolaireMontant = calculerFraisScolaire();
-    const totalMontantDu = calculerMontantTotal();
-    const reste = totalMontantDu - montantPayeNum;
+      if (isNaN(montantPayeNum) || montantPayeNum <= 0) {
+        alert('Le montant payé doit être un nombre positif valide');
+        return;
+      }
+      if (montantPayeNum > totalMontantDu) {
+        alert(`Le montant payé (${montantPayeNum} FCFA) ne peut pas dépasser le montant dû (${totalMontantDu} FCFA)`);
+        return;
+      }
 
-    // Validation côté client renforcée
-    if (isNaN(montantPayeNum) || montantPayeNum <= 0) {
-      alert('Le montant payé doit être un nombre positif valide');
-      return;
-    }
+      try {
+        const resEleve = await axios.post(`${API_URL}/api/eleves`, {
+          nom: nom.trim(),
+          prenom: prenom.trim(),
+          matricule: matricule.trim(),
+          classe_id: parseInt(classeId),
+          statut_affectation: statutAffectation || "affecté",
+          date_naissance: dateNaissance || null,
+          annee_scolaire: anneeScolaire.trim()
+        }, { headers: { Authorization: `Bearer ${token}` } });
 
-    if (montantPayeNum > totalMontantDu) {
-      alert(`Le montant payé (${montantPayeNum} FCFA) ne peut pas dépasser le montant dû (${totalMontantDu} FCFA)`);
-      return;
-    }
+        const paiementData = {
+          eleve_id: resEleve.data.id,
+          montant_paye: montantPayeNum,
+          date_paiement: datePaiement,
+          annee_scolaire: anneeScolaire,
+          mode_paiement: modePaiement,
+          trimestre: trimestre,
+          montant_du: totalMontantDu,
+          montant_classe: montantDuClasse,
+          droits_examen: droitsExamenMontant,
+          frais_scolaire: fraisScolaireMontant,
+          papiers_rames: papiersRames,
+          has_droits_examen: droitsExamen,
+          has_frais_scolaire: fraisScolaire,
+          has_papiers_rames: papiersRames
+        };
 
-    // DÉBOGAGE - Ajoutez ces logs temporairement
-    console.log('=== DÉBOGAGE FRONTEND ===');
-    console.log('Montant payé (string):', montantPaye);
-    console.log('Montant payé (number):', montantPayeNum);
-    console.log('Total montant dû:', totalMontantDu);
-    console.log('Montant classe:', montantDuClasse);
-    console.log('Droits examen:', droitsExamenMontant);
-    console.log('Frais scolaire:', fraisScolaireMontant);
+        await axios.post(`${API_URL}/api/paiements`, paiementData, { headers: { Authorization: `Bearer ${token}` } });
 
-     const classeIdValide = parseInt(classeId);
-  if (isNaN(classeIdValide)) {
-    alert("Veuillez sélectionner une classe avant d’enregistrer l’élève.");
-    return;
-  }
+        const numeroRecu = `REC-${Date.now()}`;
+        genererRecu({
+          matricule,
+          nom,
+          prenom,
+          classe: classeIdNom,
+          anneeScolaire,
+          trimestre,
+          totalPaye: montantPayeNum,
+          reste,
+          droitsExamen: droitsExamenMontant,
+          fraisScolaire: fraisScolaireMontant,
+          papiersRames,
+          date: datePaiement,
+          numero: numeroRecu
+        });
 
-  try {
-    const resEleve = await axios.post(
-      `${API_URL}/api/eleves`,
-      {
-        nom: nom.trim(),
-        prenom: prenom.trim(),
-        matricule: matricule.trim(),
-        classe_id: classeIdValide,
-        statut_affectation: statutAffectation || "affecté",
-        trimestre: isNaN(parseInt(trimestre)) ? 1 : parseInt(trimestre),
-        date_naissance: dateNaissance || null,
-        annee_scolaire: anneeScolaire.trim()
-      },
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
+        // ✅ Notification aux parents
+        if (notifierParent && reste > 0) {
+          await axios.post(`${API_URL}/api/notifications`, {
+            eleve_id: resEleve.data.id,
+            message: `Bonjour, il reste ${reste} FCFA à payer pour ${nom} ${prenom}.`,
+            type: 'sms' // ou 'email'
+          }, { headers: { Authorization: `Bearer ${token}` } });
+          alert('Le parent a été notifié du solde restant.');
+        }
 
-   
+        alert('Élève et paiement enregistrés avec succès');
 
-      // CORRECTION : Données de paiement avec conversion explicite
-      const paiementData = {
-        eleve_id: resEleve.data.id,
-        montant_paye: parseFloat(montantPayeNum), // Double conversion pour être sûr
-        date_paiement: datePaiement,
-        annee_scolaire: anneeScolaire,
-        mode_paiement: modePaiement,
-        trimestre: trimestre,
-        // Envoi des montants calculés côté frontend
-        montant_du: parseFloat(totalMontantDu),
-        montant_classe: parseFloat(montantDuClasse),
-        droits_examen: parseFloat(droitsExamenMontant),
-        frais_scolaire: parseFloat(fraisScolaireMontant),
-        papiers_rames: papiersRames,
-        // Flags pour indiquer quels frais sont appliqués
-        has_droits_examen: droitsExamen,
-        has_frais_scolaire: fraisScolaire,
-        has_papiers_rames: papiersRames
-      };
+        // Reset champs
+        setMatricule(''); setNom(''); setPrenom('');
+        setDateNaissance(''); setGenre('');
+        setStatutAffectation(''); setClasseId('');
+        setAnneeScolaire(''); setTrimestre('');
+        setDatePaiement(''); setMontantPaye('');
+        setModePaiement('');
+        setDroitsExamen(false); setFraisScolaire(false); setPapiersRames(false);
+        setNotifierParent(false);
+        setEtape(1);
 
-      console.log('=== DONNÉES ENVOYÉES AU BACKEND ===');
-      console.log(JSON.stringify(paiementData, null, 2));
-
-      await axios.post(`${API_URL}/api/paiements`, paiementData, { 
-        headers: { Authorization: `Bearer ${token}` } 
-      });
-
-      // Génération du reçu et reset...
-      const numeroRecu = `REC-${Date.now()}`;
-      genererRecu({
-        matricule,
-        nom,
-        prenom,
-        classe: classeIdNom,
-        anneeScolaire,
-        trimestre,
-        totalPaye: montantPayeNum,
-        reste,
-        droitsExamen: droitsExamenMontant,
-        fraisScolaire: fraisScolaireMontant,
-        papiersRames,
-        date: datePaiement,
-        numero: numeroRecu
-      });
-
-      alert('Élève et paiement enregistrés avec succès');
-      
-      // Reset des champs
-      setMatricule(''); setNom(''); setPrenom('');
-      setDateNaissance(''); setGenre('');
-      setStatutAffectation(''); setClasseId('');
-      setAnneeScolaire(''); setTrimestre('');
-      setDatePaiement(''); setMontantPaye('');
-      setModePaiement(''); 
-      setDroitsExamen(false);
-      setFraisScolaire(false);
-      setPapiersRames(false);
-      setEtape(1);
-      
-    } catch (err) {
-      console.error('=== ERREUR COMPLÈTE ===');
-      console.error('Erreur:', err);
-      console.error('Réponse serveur:', err.response?.data);
-      
-      const errorMessage = err.response?.data?.message || err.message;
-      console.error('Message d\'erreur:', errorMessage);
-      
-      // Affichage d'erreur amélioré
-      if (err.response?.data?.montant_du && err.response?.data?.deja_paye !== undefined) {
-        const { montant_du, deja_paye, montant_propose } = err.response.data;
-        alert(
-          `Erreur de paiement :\n` +
-          `- Montant dû total : ${montant_du} FCFA\n` +
-          `- Déjà payé : ${deja_paye} FCFA\n` +
-          `- Montant proposé : ${montant_propose} FCFA\n` +
-          `- Maximum autorisé : ${montant_du - deja_paye} FCFA`
-        );
-      } else {
-        alert('Erreur lors de l\'enregistrement: ' + errorMessage);
+      } catch (err) {
+        console.error('Erreur:', err);
+        alert('Erreur lors de l\'enregistrement: ' + (err.response?.data?.message || err.message));
       }
     }
-  }
-};
+  };
+
   return (
     <div className="container-fluid mt-4 px-4">
       <div className="card shadow-sm">
@@ -330,17 +267,12 @@ const handleSubmit = async (e) => {
                   </select>
                 </div>
                 <div className="col-md-3 mb-3">
-                <label className="form-label">Statut d'affectation</label>
-                <select 
-                  className="form-select" 
-                  value={statutAffectation} 
-                  onChange={e => setStatutAffectation(e.target.value)}
-                >
-                  <option value="affecté">Affecté</option>
-                  <option value="non affecté">Non affecté</option>
-                </select>
-              </div>
-            
+                  <label className="form-label">Statut d'affectation</label>
+                  <select className="form-select" value={statutAffectation} onChange={e => setStatutAffectation(e.target.value)}>
+                    <option value="affecté">Affecté</option>
+                    <option value="non affecté">Non affecté</option>
+                  </select>
+                </div>
                 <div className="mb-3">
                   <label className="form-label">Classe</label>
                   <select className="form-select" value={classeId} onChange={e => setClasseId(e.target.value)} required>
@@ -381,58 +313,26 @@ const handleSubmit = async (e) => {
                   </select>
                 </div>
 
-                {/* Section des frais avec cases à cocher */}
                 <div className="border rounded p-3 mb-3 bg-light">
                   <h6 className="mb-3">Frais à appliquer</h6>
-                  
-                  {/* Case frais scolaire */}
                   <div className="mb-3 form-check">
-                    <input 
-                      type="checkbox" 
-                      className="form-check-input" 
-                      id="fraisScolaire" 
-                      checked={fraisScolaire} 
-                      onChange={e => setFraisScolaire(e.target.checked)} 
-                    />
-                    <label className="form-check-label" htmlFor="fraisScolaire">
-                      Frais scolaire ({FRAIS_SCOLAIRE} FCFA)
-                    </label>
+                    <input type="checkbox" className="form-check-input" id="fraisScolaire" checked={fraisScolaire} onChange={e => setFraisScolaire(e.target.checked)} />
+                    <label className="form-check-label" htmlFor="fraisScolaire">Frais scolaire ({FRAIS_SCOLAIRE} FCFA)</label>
                   </div>
-
-                  {/* Case droits d'examen */}
                   <div className="mb-3 form-check">
-                    <input 
-                      type="checkbox" 
-                      className="form-check-input" 
-                      id="droitsExamen" 
-                      checked={droitsExamen} 
-                      onChange={e => setDroitsExamen(e.target.checked)}
-                      disabled={!(classeIdNom === "3ème" || classeIdNom === "3EME" || classeIdNom === "Terminale" || classeIdNom === "TERMINALE")}
-                    />
+                    <input type="checkbox" className="form-check-input" id="droitsExamen" checked={droitsExamen} onChange={e => setDroitsExamen(e.target.checked)} disabled={!(classeIdNom === "3ème" || classeIdNom === "3EME" || classeIdNom === "Terminale" || classeIdNom === "TERMINALE")} />
                     <label className="form-check-label" htmlFor="droitsExamen">
-                      Droits d'examen 
-                      {classeIdNom === "3ème" || classeIdNom === "3EME" ? " (3000 FCFA)" : 
-                       classeIdNom === "Terminale" || classeIdNom === "TERMINALE" ? " (6000 FCFA)" : " (Non disponible)"}
+                      Droits d'examen {classeIdNom === "3ème" || classeIdNom === "3EME" ? "(3000 FCFA)" : classeIdNom === "Terminale" || classeIdNom === "TERMINALE" ? "(6000 FCFA)" : "(Non disponible)"}
                     </label>
-                    {!(classeIdNom === "3ème" || classeIdNom === "3EME" || classeIdNom === "Terminale" || classeIdNom === "TERMINALE") && (
-                      <small className="text-muted d-block">
-                        Disponible uniquement pour 3ᵉ et Terminale
-                      </small>
-                    )}
                   </div>
-
-                  {/* Case papiers rames */}
                   <div className="mb-3 form-check">
-                    <input 
-                      type="checkbox" 
-                      className="form-check-input" 
-                      id="papiersRames" 
-                      checked={papiersRames} 
-                      onChange={e => setPapiersRames(e.target.checked)} 
-                    />
-                    <label className="form-check-label" htmlFor="papiersRames">
-                      Papiers rames
-                    </label>
+                    <input type="checkbox" className="form-check-input" id="papiersRames" checked={papiersRames} onChange={e => setPapiersRames(e.target.checked)} />
+                    <label className="form-check-label" htmlFor="papiersRames">Papiers rames</label>
+                  </div>
+                  {/* ✅ Checkbox notification parent */}
+                  <div className="mb-3 form-check">
+                    <input type="checkbox" className="form-check-input" id="notifierParent" checked={notifierParent} onChange={e => setNotifierParent(e.target.checked)} />
+                    <label className="form-check-label" htmlFor="notifierParent">Notifier le parent du solde restant</label>
                   </div>
                 </div>
 
@@ -449,39 +349,16 @@ const handleSubmit = async (e) => {
 
                 <div className="mb-3">
                   <label className="form-label">Montant dû (total)</label>
-                  <input 
-                    type="number" 
-                    className="form-control" 
-                    value={calculerMontantTotal()} 
-                    readOnly 
-                  />
+                  <input type="number" className="form-control" value={calculerMontantTotal()} readOnly />
                 </div>
-                
                 <div className="mb-3">
                   <label className="form-label">Montant payé</label>
-                  <input 
-                    type="number" 
-                    className="form-control" 
-                    value={montantPaye} 
-                    onChange={e => setMontantPaye(e.target.value)} 
-                    min="0" 
-                    max={calculerMontantTotal()}
-                    placeholder="Entrer le montant payé" 
-                    required 
-                  />
-                  <small className="text-muted">
-                    Maximum autorisé: {calculerMontantTotal()} FCFA
-                  </small>
+                  <input type="number" className="form-control" value={montantPaye} onChange={e => setMontantPaye(e.target.value)} min="0" max={calculerMontantTotal()} placeholder="Entrer le montant payé" required />
+                  <small className="text-muted">Maximum autorisé: {calculerMontantTotal()} FCFA</small>
                 </div>
-
                 <div className="mb-3">
                   <label className="form-label">Reste à payer</label>
-                  <input 
-                    type="number" 
-                    className="form-control" 
-                    value={calculerMontantTotal() - (parseInt(montantPaye) || 0)} 
-                    readOnly 
-                  />
+                  <input type="number" className="form-control" value={calculerMontantTotal() - (parseInt(montantPaye) || 0)} readOnly />
                 </div>
 
                 <button type="button" className="btn btn-secondary me-2" onClick={() => setEtape(1)}>← Précédent</button>
@@ -491,6 +368,6 @@ const handleSubmit = async (e) => {
           </form>
         </div>
       </div>
-    </div>
-  );
+    </div>
+  );
 }
