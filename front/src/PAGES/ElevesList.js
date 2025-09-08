@@ -165,7 +165,13 @@ const handleSubmit = async (e) => {
   }
   try {
     // Créer l'élève
+     if (!nom || !prenom || !matricule || !classeId || !anneeScolaire || !trimestre) {
+  alert("Tous les champs obligatoires doivent être remplis !");
+  return;
+}
    const resEleve = await axios.post(`${API_URL}/api/eleves`, {
+   
+
   nom: nom.trim(),
   prenom: prenom.trim(),
   matricule: matricule.trim(),
