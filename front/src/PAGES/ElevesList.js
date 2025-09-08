@@ -233,19 +233,25 @@ const handleSubmit = async (e) => {
 
     // Réinitialisation des champs
     setMatricule(''); setNom(''); setPrenom('');
-    setDateNaissance(''); setGenre('');
-    setStatutAffectation(''); setClasseId('');
-    setAnneeScolaire(''); setTrimestre('');
-    setDatePaiement(''); setMontantPaye('');
-    setModePaiement('');
-    setDroitsExamen(false); setFraisScolaire(false); setPapiersRames(false);
-    setNotifierParent(false);
-    setEtape(1);
+setDateNaissance(''); setGenre('');
+setStatutAffectation('affecté'); setClasseId(''); // ✅ CORRECTION ICI
+setAnneeScolaire(''); setTrimestre('');
+setDatePaiement(''); setMontantPaye('');
+setModePaiement('');
+setDroitsExamen(false); setFraisScolaire(false); setPapiersRames(false);
+setNotifierParent(false);
+setEtape(1);
 
   } catch (err) {
     console.error('Erreur:', err);
     alert('Erreur lors de l\'enregistrement: ' + (err.response?.data?.message || err.message));
   }
+  
+
+
+
+// Réinitialisation des champs
+
 };
 
   return (
