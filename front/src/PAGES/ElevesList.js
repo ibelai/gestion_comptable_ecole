@@ -169,8 +169,18 @@ const handleSubmit = async (e) => {
   alert("Tous les champs obligatoires doivent être remplis !");
   return;
 }
-gestion-comptable-ecole.onrender.com/api/eleves:1  Failed to load resource: the server responded with a status of 400 ()Understand this error
-ElevesList.js:245 Erreur: 
+console.log("Payload envoyé:", {
+  nom,
+  prenom,
+  date_naissance: dateNaissance || null,
+  genre,
+  statut_affectation: statutAffectation,
+  classe_id: parseInt(classeId),
+  trimestre: trimestre === "T1" ? 1 : trimestre === "T2" ? 2 : 3,
+  matricule,
+  annee_scolaire: anneeScolaire,
+});
+
    const resEleve = await axios.post(`${API_URL}/api/eleves`, {
    
 
