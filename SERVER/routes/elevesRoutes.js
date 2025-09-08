@@ -145,6 +145,8 @@ router.get("/:eleveId/solde", verifyToken, async (req, res) => {
 // =============================
 // 📌 Création d’un élève
 // =============================
+// Dans votre route POST /api/eleves, modifiez cette partie :
+
 router.post("/", verifyToken, authorizeRoles("admin", "comptable"), async (req, res) => {
   try {
     const { nom, prenom, date_naissance, genre, statut_affectation, classe_id, trimestre, matricule, annee_scolaire } = req.body;
@@ -155,6 +157,17 @@ router.post("/", verifyToken, authorizeRoles("admin", "comptable"), async (req, 
         required: ["nom", "prenom", "classe_id", "trimestre", "annee_scolaire", "matricule"]
       });
     }
+
+    // 🔥 CORRECTION : Fonction pour convertir le trimestre
+    const convertirTrimestre = (t) => {
+      if (typeof t === 'number') return t; // Déjà un nombre
+      switch(t) {
+        case "T1": return 1;
+        case "T2": return 2;
+        case "T3": return 3;
+        default: return parseInt(t) || 1; // Fallback
+      }
+    };
 
     // Vérification matricule unique
     const [existingEleve] = await db.query("SELECT id FROM eleves WHERE matricule = ?", [matricule]);
@@ -168,7 +181,7 @@ router.post("/", verifyToken, authorizeRoles("admin", "comptable"), async (req, 
       return res.status(400).json({ message: "Classe introuvable" });
     }
 
-    // Insertion
+    // Insertion avec conversion du trimestre
     const [result] = await db.query(`
       INSERT INTO eleves (nom, prenom, date_naissance, genre, statut_affectation, classe_id, trimestre, matricule, annee_scolaire)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -179,29 +192,17 @@ router.post("/", verifyToken, authorizeRoles("admin", "comptable"), async (req, 
       genre || null,
       statut_affectation || "affecté",
       parseInt(classe_id),
-      parseInt(trimestre),
+      convertirTrimestre(trimestre), // 🔥 CORRECTION ICI
       matricule.trim(),
       annee_scolaire.trim()
     ]);
 
-    // 🔥 Récupérer l’élève complet avec JOIN sur classe
-    const [[newEleve]] = await db.query(`
-      SELECT e.id, e.nom, e.prenom, e.matricule, e.date_naissance, e.genre,
-             e.trimestre, e.statut_affectation, e.annee_scolaire,
-             c.nom AS classe
-      FROM eleves e
-      JOIN classes c ON e.classe_id = c.id
-      WHERE e.id = ?
-    `, [result.insertId]);
-
-    res.status(201).json(newEleve);
-
+    // ... reste du code identique
   } catch (err) {
     console.error("Erreur création élève:", err);
     res.status(500).json({ message: "Erreur lors de la création de l'élève", error: err.message });
   }
-});
-// =============================
+});// =============================
 // 📌 Modification d’un élève
 // =============================
 router.put("/:id", verifyToken, authorizeRoles("admin","comptable"), async (req, res) => {
