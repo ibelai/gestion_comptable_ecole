@@ -169,6 +169,8 @@ const handleSubmit = async (e) => {
   alert("Tous les champs obligatoires doivent être remplis !");
   return;
 }
+gestion-comptable-ecole.onrender.com/api/eleves:1  Failed to load resource: the server responded with a status of 400 ()Understand this error
+ElevesList.js:245 Erreur: 
    const resEleve = await axios.post(`${API_URL}/api/eleves`, {
    
 
