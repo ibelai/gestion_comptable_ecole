@@ -163,7 +163,6 @@ const handleSubmit = async (e) => {
     alert(`Le montant payé (${montantPayeNum} FCFA) ne peut pas dépasser le montant dû (${totalMontantDu} FCFA)`);
     return;
   }
-
   try {
     // Créer l'élève
     const resEleve = await axios.post(
