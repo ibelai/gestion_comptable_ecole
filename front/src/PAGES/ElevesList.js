@@ -165,21 +165,18 @@ const handleSubmit = async (e) => {
   }
   try {
     // Créer l'élève
-   const resEleve = await axios.post(
-  `${API_URL}/api/eleves`,
-  {
-    nom: nom.trim(),
-    prenom: prenom.trim(),
-    matricule: matricule.trim(),
-    classe_id: parseInt(classeId),
-    statut_affectation: statutAffectation || "affecté",
-    date_naissance: dateNaissance || null,
-    // 🔥 CORRECTION : Convertir le trimestre en nombre
-    trimestre: trimestre === "T1" ? 1 : trimestre === "T2" ? 2 : 3,
-    annee_scolaire: anneeScolaire.trim()
-  },
-  { headers: { Authorization: `Bearer ${token}` } }
-);
+   const resEleve = await axios.post(`${API_URL}/api/eleves`, {
+  nom: nom.trim(),
+  prenom: prenom.trim(),
+  matricule: matricule.trim(),
+  classe_id: parseInt(classeId),
+  statut_affectation: statutAffectation || "affecté",
+  date_naissance: dateNaissance || null,
+  genre: genre || null,   // ✅ ajout genre
+  trimestre: trimestre === "T1" ? 1 : trimestre === "T2" ? 2 : 3,
+  annee_scolaire: anneeScolaire.trim()
+}, { headers: { Authorization: `Bearer ${token}` } });
+
     console.log("Réponse API ELEVE:", resEleve.data);
 
     // Préparer les données de paiement
