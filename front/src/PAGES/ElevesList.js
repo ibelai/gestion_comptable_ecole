@@ -302,87 +302,206 @@ const handleSubmit = async (e) => {
               </>
             )}
 
-            {etape === 2 && (
-              <>
-                <div className="mb-3">
-                  <label className="form-label">Année scolaire</label>
-                  <input type="text" className="form-control" placeholder="2024-2025" value={anneeScolaire} onChange={e => setAnneeScolaire(e.target.value)} required />
-                </div>
-                <div className="mb-3">
-                  <label className="form-label">Trimestre</label>
-                  <select className="form-select" value={trimestre} onChange={e => setTrimestre(e.target.value)} required>
-                    <option value="">--Choisir un trimestre--</option>
-                    <option value="T1">Premier trimestre</option>
-                    <option value="T2">Deuxième trimestre</option>
-                    <option value="T3">Troisième trimestre</option>
-                  </select>
-                </div>
-                <div className="mb-3">
-                  <label className="form-label">Date de paiement</label>
-                  <input type="date" className="form-control" value={datePaiement} onChange={e => setDatePaiement(e.target.value)} required />
-                </div>
-                <div className="mb-3">
-                  <label className="form-label">Mode de paiement</label>
-                  <select className="form-select" value={modePaiement} onChange={e => setModePaiement(e.target.value)} required>
-                    <option value="">--Choisir un mode--</option>
-                    <option value="Espèces">Espèces</option>
-                    <option value="Mobile Money">Mobile Money</option>
-                    <option value="Chèque">Chèque</option>
-                  </select>
-                </div>
+           {etape === 2 && (
+  <>
+    <div className="mb-3">
+      <label className="form-label">Année scolaire</label>
+      <input
+        type="text"
+        className="form-control"
+        placeholder="2024-2025"
+        value={anneeScolaire}
+        onChange={e => setAnneeScolaire(e.target.value)}
+        required
+      />
+    </div>
+    <div className="mb-3">
+      <label className="form-label">Trimestre</label>
+      <select
+        className="form-select"
+        value={trimestre}
+        onChange={e => setTrimestre(e.target.value)}
+        required
+      >
+        <option value="">--Choisir un trimestre--</option>
+        <option value="T1">Premier trimestre</option>
+        <option value="T2">Deuxième trimestre</option>
+        <option value="T3">Troisième trimestre</option>
+      </select>
+    </div>
+    <div className="mb-3">
+      <label className="form-label">Date de paiement</label>
+      <input
+        type="date"
+        className="form-control"
+        value={datePaiement}
+        onChange={e => setDatePaiement(e.target.value)}
+        required
+      />
+    </div>
+    <div className="mb-3">
+      <label className="form-label">Mode de paiement</label>
+      <select
+        className="form-select"
+        value={modePaiement}
+        onChange={e => setModePaiement(e.target.value)}
+        required
+      >
+        <option value="">--Choisir un mode--</option>
+        <option value="Espèces">Espèces</option>
+        <option value="Mobile Money">Mobile Money</option>
+        <option value="Chèque">Chèque</option>
+      </select>
+    </div>
 
-                <div className="border rounded p-3 mb-3 bg-light">
-                  <h6 className="mb-3">Frais à appliquer</h6>
-                  <div className="mb-3 form-check">
-                    <input type="checkbox" className="form-check-input" id="fraisScolaire" checked={fraisScolaire} onChange={e => setFraisScolaire(e.target.checked)} />
-                    <label className="form-check-label" htmlFor="fraisScolaire">Frais scolaire ({FRAIS_SCOLAIRE} FCFA)</label>
-                  </div>
-                  <div className="mb-3 form-check">
-                    <input type="checkbox" className="form-check-input" id="droitsExamen" checked={droitsExamen} onChange={e => setDroitsExamen(e.target.checked)} disabled={!(classeIdNom === "3ème" || classeIdNom === "3EME" || classeIdNom === "Terminale" || classeIdNom === "TERMINALE")} />
-                    <label className="form-check-label" htmlFor="droitsExamen">
-                      Droits d'examen {classeIdNom === "3ème" || classeIdNom === "3EME" ? "(3000 FCFA)" : classeIdNom === "Terminale" || classeIdNom === "TERMINALE" ? "(6000 FCFA)" : "(Non disponible)"}
-                    </label>
-                  </div>
-                  <div className="mb-3 form-check">
-                    <input type="checkbox" className="form-check-input" id="papiersRames" checked={papiersRames} onChange={e => setPapiersRames(e.target.checked)} />
-                    <label className="form-check-label" htmlFor="papiersRames">Papiers rames</label>
-                  </div>
-                  {/* ✅ Checkbox notification parent */}
-                  <div className="mb-3 form-check">
-                    <input type="checkbox" className="form-check-input" id="notifierParent" checked={notifierParent} onChange={e => setNotifierParent(e.target.checked)} />
-                    <label className="form-check-label" htmlFor="notifierParent">Notifier le parent du solde restant</label>
-                  </div>
-                </div>
+    <div className="border rounded p-3 mb-3 bg-light">
+      <h6 className="mb-3">Frais à appliquer</h6>
+      <div className="mb-3 form-check">
+        <input
+          type="checkbox"
+          className="form-check-input"
+          id="fraisScolaire"
+          checked={fraisScolaire}
+          onChange={e => setFraisScolaire(e.target.checked)}
+        />
+        <label className="form-check-label" htmlFor="fraisScolaire">
+          Frais scolaire ({FRAIS_SCOLAIRE} FCFA)
+        </label>
+      </div>
+      <div className="mb-3 form-check">
+        <input
+          type="checkbox"
+          className="form-check-input"
+          id="droitsExamen"
+          checked={droitsExamen}
+          onChange={e => setDroitsExamen(e.target.checked)}
+          disabled={
+            !(classeIdNom === "3ème" || classeIdNom === "3EME" || classeIdNom === "Terminale" || classeIdNom === "TERMINALE")
+          }
+        />
+        <label className="form-check-label" htmlFor="droitsExamen">
+          Droits d'examen{" "}
+          {classeIdNom === "3ème" || classeIdNom === "3EME"
+            ? "(3000 FCFA)"
+            : classeIdNom === "Terminale" || classeIdNom === "TERMINALE"
+            ? "(6000 FCFA)"
+            : "(Non disponible)"}
+        </label>
+      </div>
+      <div className="mb-3 form-check">
+        <input
+          type="checkbox"
+          className="form-check-input"
+          id="papiersRames"
+          checked={papiersRames}
+          onChange={e => setPapiersRames(e.target.checked)}
+        />
+        <label className="form-check-label" htmlFor="papiersRames">
+          Papiers rames
+        </label>
+      </div>
+      <div className="mb-3 form-check">
+        <input
+          type="checkbox"
+          className="form-check-input"
+          id="notifierParent"
+          checked={notifierParent}
+          onChange={e => setNotifierParent(e.target.checked)}
+        />
+        <label className="form-check-label" htmlFor="notifierParent">
+          Notifier le parent du solde restant
+        </label>
+      </div>
+    </div>
 
-                <div className="alert alert-info">
-                  <h6>Récapitulatif des frais :</h6>
-                  <ul className="mb-0">
-                    <li>Montant classe: {montantDuClasse} FCFA</li>
-                    {fraisScolaire && <li>Frais scolaire: {FRAIS_SCOLAIRE} FCFA</li>}
-                    {droitsExamen && calculerDroitsExamen() > 0 && <li>Droits d'examen: {calculerDroitsExamen()} FCFA</li>}
-                    {papiersRames && <li>Papiers rames: Inclus</li>}
-                    <li><strong>Total: {calculerMontantTotal()} FCFA</strong></li>
-                  </ul>
-                </div>
+    {/* Récapitulatif */}
+    <div className="alert alert-info">
+      <h6>Récapitulatif des frais :</h6>
+      <ul className="mb-0">
+        <li>Montant classe: {montantDuClasse} FCFA</li>
+        {fraisScolaire && <li>Frais scolaire: {FRAIS_SCOLAIRE} FCFA</li>}
+        {droitsExamen && calculerDroitsExamen(classeIdNom, droitsExamen) > 0 && (
+          <li>Droits d'examen: {calculerDroitsExamen(classeIdNom, droitsExamen)} FCFA</li>
+        )}
+        {papiersRames && <li>Papiers rames: Inclus</li>}
+        <li>
+          <strong>
+            Total:{" "}
+            {calculerMontantTotal(
+              montantDuClasse,
+              fraisScolaire ? FRAIS_SCOLAIRE : 0,
+              droitsExamen ? calculerDroitsExamen(classeIdNom, droitsExamen) : 0
+            )}{" "}
+            FCFA
+          </strong>
+        </li>
+      </ul>
+    </div>
 
-                <div className="mb-3">
-                  <label className="form-label">Montant dû (total)</label>
-                  <input type="number" className="form-control" value={calculerMontantTotal()} readOnly />
-                </div>
-                <div className="mb-3">
-                  <label className="form-label">Montant payé</label>
-                  <input type="number" className="form-control" value={montantPaye} onChange={e => setMontantPaye(e.target.value)} min="0" max={calculerMontantTotal()} placeholder="Entrer le montant payé" required />
-                  <small className="text-muted">Maximum autorisé: {calculerMontantTotal()} FCFA</small>
-                </div>
-                <div className="mb-3">
-                  <label className="form-label">Reste à payer</label>
-                  <input type="number" className="form-control" value={calculerMontantTotal() - (parseInt(montantPaye) || 0)} readOnly />
-                </div>
+    <div className="mb-3">
+      <label className="form-label">Montant dû (total)</label>
+      <input
+        type="number"
+        className="form-control"
+        value={calculerMontantTotal(
+          montantDuClasse,
+          fraisScolaire ? FRAIS_SCOLAIRE : 0,
+          droitsExamen ? calculerDroitsExamen(classeIdNom, droitsExamen) : 0
+        )}
+        readOnly
+      />
+    </div>
+    <div className="mb-3">
+      <label className="form-label">Montant payé</label>
+      <input
+        type="number"
+        className="form-control"
+        value={montantPaye}
+        onChange={e => setMontantPaye(e.target.value)}
+        min="0"
+        max={calculerMontantTotal(
+          montantDuClasse,
+          fraisScolaire ? FRAIS_SCOLAIRE : 0,
+          droitsExamen ? calculerDroitsExamen(classeIdNom, droitsExamen) : 0
+        )}
+        placeholder="Entrer le montant payé"
+        required
+      />
+      <small className="text-muted">
+        Maximum autorisé:{" "}
+        {calculerMontantTotal(
+          montantDuClasse,
+          fraisScolaire ? FRAIS_SCOLAIRE : 0,
+          droitsExamen ? calculerDroitsExamen(classeIdNom, droitsExamen) : 0
+        )}{" "}
+        FCFA
+      </small>
+    </div>
+    <div className="mb-3">
+      <label className="form-label">Reste à payer</label>
+      <input
+        type="number"
+        className="form-control"
+        value={
+          calculerMontantTotal(
+            montantDuClasse,
+            fraisScolaire ? FRAIS_SCOLAIRE : 0,
+            droitsExamen ? calculerDroitsExamen(classeIdNom, droitsExamen) : 0
+          ) - (parseInt(montantPaye) || 0)
+        }
+        readOnly
+      />
+    </div>
 
-                <button type="button" className="btn btn-secondary me-2" onClick={() => setEtape(1)}>← Précédent</button>
-                <button type="submit" className="btn btn-success">Valider</button>
-              </>
-            )}
+    <button type="button" className="btn btn-secondary me-2" onClick={() => setEtape(1)}>
+      ← Précédent
+    </button>
+    <button type="submit" className="btn btn-success">
+      Valider
+    </button>
+  </>
+)}
+
           </form>
         </div>
       </div>
