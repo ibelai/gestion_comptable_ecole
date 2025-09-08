@@ -124,117 +124,136 @@ export default function ElevesList() {
     img.onerror = () => alert("Erreur : impossible de charger le logo.");
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (etape === 1) {
-      if (!matricule || !nom || !prenom || !classeId) {
-        alert('Merci de remplir le matricule, nom, prénom et la classe');
-        return;
-      }
-      setEtape(2);
-    } else {
-      if (!datePaiement || !anneeScolaire || !modePaiement || !trimestre) {
-        alert('Veuillez remplir tous les champs requis, y compris le trimestre');
-        return;
-      }
+const calculerDroitsExamen = (classeNom, droitsExamen) => {
+  if (!droitsExamen) return 0;
+  if (classeNom === "3ème" || classeNom === "3EME") return 3000;
+  if (classeNom === "Terminale" || classeNom === "TERMINALE") return 6000;
+  return 0;
+};
 
-      const montantPayeNum = parseFloat(montantPaye) || 0;
-      const droitsExamenMontant = calculerDroitsExamen();
-      const fraisScolaireMontant = calculerFraisScolaire();
-      const totalMontantDu = calculerMontantTotal();
-      const reste = totalMontantDu - montantPayeNum;
+const calculerFraisScolaire = (fraisScolaire) => fraisScolaire ? FRAIS_SCOLAIRE : 0;
 
-      if (isNaN(montantPayeNum) || montantPayeNum <= 0) {
-        alert('Le montant payé doit être un nombre positif valide');
-        return;
-      }
-      if (montantPayeNum > totalMontantDu) {
-        alert(`Le montant payé (${montantPayeNum} FCFA) ne peut pas dépasser le montant dû (${totalMontantDu} FCFA)`);
-        return;
-      }
+const calculerMontantTotal = (montantDuClasse, fraisScolaireMontant, droitsExamenMontant) =>
+  montantDuClasse + fraisScolaireMontant + droitsExamenMontant;
 
-      try {
-       const resEleve = await axios.post(
-  `${API_URL}/api/eleves`,
-  {
-    nom: nom.trim(),
-    prenom: prenom.trim(),
-    matricule: matricule.trim(),
-    classe_id: parseInt(classeId),
-    statut_affectation: statutAffectation || "affecté",
-    date_naissance: dateNaissance || null,
-    annee_scolaire: anneeScolaire.trim()
-  },
-  { headers: { Authorization: `Bearer ${token}` } }
-);
+const handleSubmit = async (e) => {
+  e.preventDefault();
 
-console.log("Réponse API ELEVE:", resEleve.data);
-
-        const paiementData = {
-          eleve_id: resEleve.data.id,
-          montant_paye: montantPayeNum,
-          date_paiement: datePaiement,
-          annee_scolaire: anneeScolaire,
-          mode_paiement: modePaiement,
-          trimestre: trimestre,
-          montant_du: totalMontantDu,
-          montant_classe: montantDuClasse,
-          droits_examen: droitsExamenMontant,
-          frais_scolaire: fraisScolaireMontant,
-          papiers_rames: papiersRames,
-          has_droits_examen: droitsExamen,
-          has_frais_scolaire: fraisScolaire,
-          has_papiers_rames: papiersRames
-        };
-
-        await axios.post(`${API_URL}/api/paiements`, paiementData, { headers: { Authorization: `Bearer ${token}` } });
-
-        const numeroRecu = `REC-${Date.now()}`;
-        genererRecu({
-          matricule,
-          nom,
-          prenom,
-          classe: classeIdNom,
-          anneeScolaire,
-          trimestre,
-          totalPaye: montantPayeNum,
-          reste,
-          droitsExamen: droitsExamenMontant,
-          fraisScolaire: fraisScolaireMontant,
-          papiersRames,
-          date: datePaiement,
-          numero: numeroRecu
-        });
-
-        // ✅ Notification aux parents
-        if (notifierParent && reste > 0) {
-          await axios.post(`${API_URL}/api/notifications`, {
-            eleve_id: resEleve.data.id,
-            message: `Bonjour, il reste ${reste} FCFA à payer pour ${nom} ${prenom}.`,
-            type: 'sms' // ou 'email'
-          }, { headers: { Authorization: `Bearer ${token}` } });
-          alert('Le parent a été notifié du solde restant.');
-        }
-
-        alert('Élève et paiement enregistrés avec succès');
-
-        // Reset champs
-        setMatricule(''); setNom(''); setPrenom('');
-        setDateNaissance(''); setGenre('');
-        setStatutAffectation(''); setClasseId('');
-        setAnneeScolaire(''); setTrimestre('');
-        setDatePaiement(''); setMontantPaye('');
-        setModePaiement('');
-        setDroitsExamen(false); setFraisScolaire(false); setPapiersRames(false);
-        setNotifierParent(false);
-        setEtape(1);
-
-      } catch (err) {
-        console.error('Erreur:', err);
-        alert('Erreur lors de l\'enregistrement: ' + (err.response?.data?.message || err.message));
-      }
+  if (etape === 1) {
+    if (!matricule || !nom || !prenom || !classeId) {
+      alert('Merci de remplir le matricule, nom, prénom et la classe');
+      return;
     }
-  };
+    setEtape(2);
+    return;
+  }
+
+  // Étape 2 : paiement
+  if (!datePaiement || !anneeScolaire || !modePaiement || !trimestre) {
+    alert('Veuillez remplir tous les champs requis, y compris le trimestre');
+    return;
+  }
+
+  const montantPayeNum = parseFloat(montantPaye) || 0;
+  const classeNom = classes.find(c => c.id === parseInt(classeId))?.nom || '';
+  const droitsExamenMontant = calculerDroitsExamen(classeNom, droitsExamen);
+  const fraisScolaireMontant = calculerFraisScolaire(fraisScolaire);
+  const totalMontantDu = calculerMontantTotal(montantDuClasse, fraisScolaireMontant, droitsExamenMontant);
+  const reste = totalMontantDu - montantPayeNum;
+
+  if (isNaN(montantPayeNum) || montantPayeNum <= 0) {
+    alert('Le montant payé doit être un nombre positif valide');
+    return;
+  }
+
+  if (montantPayeNum > totalMontantDu) {
+    alert(`Le montant payé (${montantPayeNum} FCFA) ne peut pas dépasser le montant dû (${totalMontantDu} FCFA)`);
+    return;
+  }
+
+  try {
+    // Créer l'élève
+    const resEleve = await axios.post(
+      `${API_URL}/api/eleves`,
+      {
+        nom: nom.trim(),
+        prenom: prenom.trim(),
+        matricule: matricule.trim(),
+        classe_id: parseInt(classeId),
+        statut_affectation: statutAffectation || "affecté",
+        date_naissance: dateNaissance || null,
+        annee_scolaire: anneeScolaire.trim()
+      },
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+
+    console.log("Réponse API ELEVE:", resEleve.data);
+
+    // Préparer les données de paiement
+    const paiementData = {
+      eleve_id: resEleve.data.id,
+      montant_paye: montantPayeNum,
+      date_paiement: datePaiement,
+      annee_scolaire: anneeScolaire,
+      mode_paiement: modePaiement,
+      trimestre: trimestre,
+      montant_du: totalMontantDu,
+      montant_classe: montantDuClasse,
+      droits_examen: droitsExamenMontant,
+      frais_scolaire: fraisScolaireMontant,
+      papiers_rames: papiersRames,
+      has_droits_examen: droitsExamen,
+      has_frais_scolaire: fraisScolaire,
+      has_papiers_rames: papiersRames
+    };
+
+    await axios.post(`${API_URL}/api/paiements`, paiementData, { headers: { Authorization: `Bearer ${token}` } });
+
+    const numeroRecu = `REC-${Date.now()}`;
+    genererRecu({
+      matricule,
+      nom,
+      prenom,
+      classe: classeNom,
+      anneeScolaire,
+      trimestre,
+      totalPaye: montantPayeNum,
+      reste,
+      droitsExamen: droitsExamenMontant,
+      fraisScolaire: fraisScolaireMontant,
+      papiersRames,
+      date: datePaiement,
+      numero: numeroRecu
+    });
+
+    // Notification aux parents si demandé
+    if (notifierParent && reste > 0) {
+      await axios.post(`${API_URL}/api/notifications`, {
+        eleve_id: resEleve.data.id,
+        message: `Bonjour, il reste ${reste} FCFA à payer pour ${nom} ${prenom}.`,
+        type: 'sms'
+      }, { headers: { Authorization: `Bearer ${token}` } });
+      alert('Le parent a été notifié du solde restant.');
+    }
+
+    alert('Élève et paiement enregistrés avec succès');
+
+    // Réinitialisation des champs
+    setMatricule(''); setNom(''); setPrenom('');
+    setDateNaissance(''); setGenre('');
+    setStatutAffectation(''); setClasseId('');
+    setAnneeScolaire(''); setTrimestre('');
+    setDatePaiement(''); setMontantPaye('');
+    setModePaiement('');
+    setDroitsExamen(false); setFraisScolaire(false); setPapiersRames(false);
+    setNotifierParent(false);
+    setEtape(1);
+
+  } catch (err) {
+    console.error('Erreur:', err);
+    alert('Erreur lors de l\'enregistrement: ' + (err.response?.data?.message || err.message));
+  }
+};
 
   return (
     <div className="container-fluid mt-4 px-4">
