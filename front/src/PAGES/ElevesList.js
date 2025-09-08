@@ -68,15 +68,8 @@ export default function ElevesList() {
     setMontantDuClasse(montant ? parseInt(montant.montant, 10) : 0);
   }, [classeId, anneeScolaire, statutAffectation, classes, montantsClasses]);
 
-  const calculerDroitsExamen = () => {
-    if (!droitsExamen) return 0;
-    if (classeIdNom === "3ème" || classeIdNom === "3EME") return 3000;
-    if (classeIdNom === "Terminale" || classeIdNom === "TERMINALE") return 6000;
-    return 0;
-  };
 
-  const calculerFraisScolaire = () => fraisScolaire ? FRAIS_SCOLAIRE : 0;
-  const calculerMontantTotal = () => montantDuClasse + calculerFraisScolaire() + calculerDroitsExamen();
+  
 
   const genererRecu = (paiement) => {
     const doc = new jsPDF();
