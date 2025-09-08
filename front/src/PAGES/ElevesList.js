@@ -155,6 +155,7 @@ export default function ElevesList() {
 
       try {
         const resEleve = await axios.post(`${API_URL}/api/eleves`, {
+          
           nom: nom.trim(),
           prenom: prenom.trim(),
           matricule: matricule.trim(),
@@ -162,7 +163,7 @@ export default function ElevesList() {
           statut_affectation: statutAffectation || "affecté",
           date_naissance: dateNaissance || null,
           annee_scolaire: anneeScolaire.trim()
-        }, { headers: { Authorization: `Bearer ${token}` } });
+        },console.log("Réponse API ELEVE:", resEleve.data), { headers: { Authorization: `Bearer ${token}` } });
 
         const paiementData = {
           eleve_id: resEleve.data.id,

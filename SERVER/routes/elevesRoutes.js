@@ -142,6 +142,9 @@ router.get("/:eleveId/solde", verifyToken, async (req, res) => {
 // =============================
 // 📌 Création d’un élève
 // =============================
+// =============================
+// 📌 Création d’un élève
+// =============================
 router.post("/", verifyToken, authorizeRoles("admin", "comptable"), async (req, res) => {
   try {
     const { nom, prenom, date_naissance, genre, statut_affectation, classe_id, trimestre, matricule, annee_scolaire } = req.body;
@@ -181,15 +184,23 @@ router.post("/", verifyToken, authorizeRoles("admin", "comptable"), async (req, 
       annee_scolaire.trim()
     ]);
 
-    res.status(201).json({ id: result.insertId, message: "Élève créé avec succès" });
+    // 🔥 Récupérer l’élève complet avec JOIN sur classe
+    const [[newEleve]] = await db.query(`
+      SELECT e.id, e.nom, e.prenom, e.matricule, e.date_naissance, e.genre,
+             e.trimestre, e.statut_affectation, e.annee_scolaire,
+             c.nom AS classe
+      FROM eleves e
+      JOIN classes c ON e.classe_id = c.id
+      WHERE e.id = ?
+    `, [result.insertId]);
+
+    res.status(201).json(newEleve);
 
   } catch (err) {
     console.error("Erreur création élève:", err);
     res.status(500).json({ message: "Erreur lors de la création de l'élève", error: err.message });
   }
 });
-
-
 // =============================
 // 📌 Modification d’un élève
 // =============================
