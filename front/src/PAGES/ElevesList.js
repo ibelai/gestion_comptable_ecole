@@ -6,7 +6,7 @@ import 'jspdf-autotable';
 export default function ElevesList() {
   const [etape, setEtape] = useState(1);
   const token = localStorage.getItem('token');
-  const API_URL = process.env.REACT_APP_API_URL;
+  const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:1000';
 
   // Champs élève
   const [matricule, setMatricule] = useState('');
@@ -15,7 +15,7 @@ export default function ElevesList() {
   const [dateNaissance, setDateNaissance] = useState('');
   const [genre, setGenre] = useState('');
   const [classeId, setClasseId] = useState('');
-  const [statutAffectation, setStatutAffectation] = useState('affecté');
+ const [statutAffectation, setStatutAffectation] = useState('Affecté');
 
   // Champs paiement
   const [anneeScolaire, setAnneeScolaire] = useState('');
@@ -28,7 +28,7 @@ export default function ElevesList() {
   const [droitsExamen, setDroitsExamen] = useState(false);
   const [fraisScolaire, setFraisScolaire] = useState(false);
   const [papiersRames, setPapiersRames] = useState(false);
-  const [notifierParent, setNotifierParent] = useState(false); // ✅ Nouvelle option
+  
 
   // Données classes
   const [classes, setClasses] = useState([]);
@@ -55,18 +55,20 @@ export default function ElevesList() {
   }, []);
 
   useEffect(() => {
-    if (!classeId || !anneeScolaire || !statutAffectation) {
-      setMontantDuClasse(0);
-      return;
-    }
-    const classeNom = classes.find(c => c.id === parseInt(classeId))?.nom;
-    const montant = montantsClasses.find(m =>
-      m.classe === classeNom &&
-      m.annee_scolaire === anneeScolaire &&
-      m.statut_affectation.toLowerCase() === statutAffectation.toLowerCase()
-    );
-    setMontantDuClasse(montant ? parseInt(montant.montant, 10) : 0);
-  }, [classeId, anneeScolaire, statutAffectation, classes, montantsClasses]);
+  if (!classeId || !anneeScolaire || !statutAffectation) {
+    setMontantDuClasse(0);
+    return;
+  }
+  const classeNom = classes.find(c => c.id === parseInt(classeId))?.nom;
+  const montant = montantsClasses.find(m =>
+    m.classe === classeNom &&
+    m.annee_scolaire === anneeScolaire &&
+    m.statut_affectation === statutAffectation // Pas de toLowerCase() ici
+  );
+  setMontantDuClasse(
+    montant ? parseInt(montant.montant.replace(/\s/g, ''), 10) : 0
+  );
+}, [classeId, anneeScolaire, statutAffectation, classes, montantsClasses]);
 
 
   
@@ -124,151 +126,193 @@ const calculerDroitsExamen = (classeNom, droitsExamen) => {
   return 0;
 };
 
-const calculerFraisScolaire = (fraisScolaire) => fraisScolaire ? FRAIS_SCOLAIRE : 0;
+const calculerFraisScolaire = (fraisScolaire) => fraisScolaire ? 17500 : 0;
 
-const calculerMontantTotal = (montantDuClasse, fraisScolaireMontant, droitsExamenMontant) =>
-  montantDuClasse + fraisScolaireMontant + droitsExamenMontant;
+const calculerMontantTotal = (montantClasse, frais, droits) =>
+  montantClasse + frais + droits;
+// --- useEffect pour calculer le montant de la classe ---
+// Dans votre useEffect pour le calcul du montant de classe
+useEffect(() => {
+  if (!classeId || !anneeScolaire || !statutAffectation) {
+    setMontantDuClasse(0);
+    return;
+  }
+  
+  const classeNom = classes.find(c => c.id === parseInt(classeId))?.nom;
+  
+  // 🔥 CORRECTION : Chercher avec le statut exact, sans toLowerCase()
+  const montant = montantsClasses.find(m =>
+    m.classe === classeNom &&
+    m.annee_scolaire === anneeScolaire &&
+    m.statut_affectation === statutAffectation // Comparaison directe
+  );
 
+  console.log("Recherche montant pour:", {
+    classe: classeNom,
+    annee: anneeScolaire,
+    statut: statutAffectation,
+    trouve: !!montant,
+    montant: montant?.montant
+  });
+
+  const montantNet = montant ? parseInt(montant.montant.toString().replace(/\s/g, ''), 10) : 0;
+  setMontantDuClasse(montantNet);
+}, [classeId, anneeScolaire, statutAffectation, classes, montantsClasses]);
+
+// Dans votre handleSubmit - Améliorer les logs et validation
 const handleSubmit = async (e) => {
   e.preventDefault();
 
   if (etape === 1) {
     if (!matricule || !nom || !prenom || !classeId) {
-      alert('Merci de remplir le matricule, nom, prénom et la classe');
+      alert("Veuillez remplir les champs obligatoires");
       return;
     }
     setEtape(2);
     return;
   }
 
-  // Étape 2 : paiement
+  // Étape 2 : validation renforcée
   if (!datePaiement || !anneeScolaire || !modePaiement || !trimestre) {
-    alert('Veuillez remplir tous les champs requis, y compris le trimestre');
+    alert("Veuillez remplir tous les champs de paiement");
     return;
   }
 
-  const montantPayeNum = parseFloat(montantPaye) || 0;
+  // 🔥 VÉRIFICATION PRÉALABLE : Montant de classe doit être > 0
+  if (montantDuClasse <= 0) {
+    alert(`Aucun montant configuré pour cette classe (${classes.find(c => c.id === parseInt(classeId))?.nom}) avec le statut "${statutAffectation}" pour l'année ${anneeScolaire}. Contactez l'administrateur.`);
+    return;
+  }
+
   const classeNom = classes.find(c => c.id === parseInt(classeId))?.nom || '';
-  const droitsExamenMontant = calculerDroitsExamen(classeNom, droitsExamen);
-  const fraisScolaireMontant = calculerFraisScolaire(fraisScolaire);
-  const totalMontantDu = calculerMontantTotal(montantDuClasse, fraisScolaireMontant, droitsExamenMontant);
-  const reste = totalMontantDu - montantPayeNum;
+  const montantPayeNum = Number(montantPaye) || 0;
 
-  if (isNaN(montantPayeNum) || montantPayeNum <= 0) {
-    alert('Le montant payé doit être un nombre positif valide');
+  if (montantPayeNum <= 0) {
+    alert("Le montant payé doit être supérieur à 0");
     return;
   }
 
-  if (montantPayeNum > totalMontantDu) {
-    alert(`Le montant payé (${montantPayeNum} FCFA) ne peut pas dépasser le montant dû (${totalMontantDu} FCFA)`);
+  if (montantPayeNum > montantDuClasse) {
+    alert(`Le montant payé (${montantPayeNum} FCFA) ne peut pas dépasser le montant de la classe (${montantDuClasse} FCFA)`);
     return;
   }
+
   try {
-    // Créer l'élève
-     if (!nom || !prenom || !matricule || !classeId || !anneeScolaire || !trimestre) {
-  alert("Tous les champs obligatoires doivent être remplis !");
-  return;
-}
-console.log("Payload envoyé:", {
-  nom,
-  prenom,
-  date_naissance: dateNaissance || null,
-  genre,
-  statut_affectation: statutAffectation,
-  classe_id: parseInt(classeId),
-  trimestre: trimestre === "T1" ? 1 : trimestre === "T2" ? 2 : 3,
-  matricule,
-  annee_scolaire: anneeScolaire,
-});
+    console.log("=== CRÉATION ÉLÈVE ===");
+    console.log("Données élève à envoyer:", {
+      nom: nom.trim(),
+      prenom: prenom.trim(),
+      matricule: matricule.trim(),
+      classe_id: parseInt(classeId),
+      statut_affectation: statutAffectation, // "Affecté" ou "Non affecté"
+      date_naissance: dateNaissance || null,
+      genre: genre || null,
+      trimestre,
+      annee_scolaire: anneeScolaire.trim()
+    });
 
-   const resEleve = await axios.post(`${API_URL}/api/eleves`, {
-   
+    // Création élève avec gestion d'erreur améliorée
+    const resEleve = await axios.post(`${API_URL}/api/eleves`, {
+      nom: nom.trim(),
+      prenom: prenom.trim(),
+      matricule: matricule.trim(),
+      classe_id: parseInt(classeId),
+      statut_affectation: statutAffectation,
+      date_naissance: dateNaissance || null,
+      genre: genre || null,
+      trimestre,
+      annee_scolaire: anneeScolaire.trim()
+    }, { headers: { Authorization: `Bearer ${token}` } });
 
-  nom: nom.trim(),
-  prenom: prenom.trim(),
-  matricule: matricule.trim(),
-  classe_id: parseInt(classeId),
-  statut_affectation: statutAffectation || "affecté",
-  date_naissance: dateNaissance || null,
-  genre: genre || null,   // ✅ ajout genre
-  trimestre: trimestre === "T1" ? 1 : trimestre === "T2" ? 2 : 3,
-  annee_scolaire: anneeScolaire.trim()
-}, { headers: { Authorization: `Bearer ${token}` } });
+    console.log("✅ Élève créé:", resEleve.data);
 
-    console.log("Réponse API ELEVE:", resEleve.data);
-
-    // Préparer les données de paiement
+    // Données de paiement
     const paiementData = {
       eleve_id: resEleve.data.id,
       montant_paye: montantPayeNum,
       date_paiement: datePaiement,
-      annee_scolaire: anneeScolaire,
+      annee_scolaire: anneeScolaire.trim(),
       mode_paiement: modePaiement,
-      trimestre: trimestre,
-      montant_du: totalMontantDu,
-      montant_classe: montantDuClasse,
-      droits_examen: droitsExamenMontant,
-      frais_scolaire: fraisScolaireMontant,
-      papiers_rames: papiersRames,
-      has_droits_examen: droitsExamen,
-      has_frais_scolaire: fraisScolaire,
-      has_papiers_rames: papiersRames
+      trimestre,
+      fraisScolaire: fraisScolaire,
+      droitsExamen: droitsExamen,
+      papiersRames: papiersRames
     };
 
-    await axios.post(`${API_URL}/api/paiements`, paiementData, { headers: { Authorization: `Bearer ${token}` } });
+    console.log("=== CRÉATION PAIEMENT ===");
+    console.log("Données paiement à envoyer:", paiementData);
 
-    const numeroRecu = `REC-${Date.now()}`;
+    const resPaiement = await axios.post(`${API_URL}/api/paiements`, paiementData, { 
+      headers: { Authorization: `Bearer ${token}` } 
+    });
+
+    console.log("✅ Paiement créé:", resPaiement.data);
+
+    // Générer reçu
+    const droitsExamenMontant = calculerDroitsExamen(classeNom, droitsExamen);
+    const fraisScolaireMontant = calculerFraisScolaire(fraisScolaire);
+
     genererRecu({
-      matricule,
-      nom,
-      prenom,
-      classe: classeNom,
+      matricule, 
+      nom, 
+      prenom, 
+      classe: classeNom, 
       anneeScolaire,
-      trimestre,
-      totalPaye: montantPayeNum,
-      reste,
+      trimestre, 
+      totalPaye: montantPayeNum, 
+      reste: montantDuClasse - montantPayeNum,
       droitsExamen: droitsExamenMontant,
       fraisScolaire: fraisScolaireMontant,
       papiersRames,
       date: datePaiement,
-      numero: numeroRecu
+      numero: `REC-${Date.now()}`
     });
 
-    // Notification aux parents si demandé
-    if (notifierParent && reste > 0) {
-      await axios.post(`${API_URL}/api/notifications`, {
-        eleve_id: resEleve.data.id,
-        message: `Bonjour, il reste ${reste} FCFA à payer pour ${nom} ${prenom}.`,
-        type: 'sms'
-      }, { headers: { Authorization: `Bearer ${token}` } });
-      alert('Le parent a été notifié du solde restant.');
-    }
+    alert("Élève et paiement enregistrés avec succès");
 
-    alert('Élève et paiement enregistrés avec succès');
-
-    // Réinitialisation des champs
-    setMatricule(''); setNom(''); setPrenom('');
-setDateNaissance(''); setGenre('');
-setStatutAffectation('affecté'); setClasseId(''); // ✅ CORRECTION ICI
-setAnneeScolaire(''); setTrimestre('');
-setDatePaiement(''); setMontantPaye('');
-setModePaiement('');
-setDroitsExamen(false); setFraisScolaire(false); setPapiersRames(false);
-setNotifierParent(false);
-setEtape(1);
+    // Reset complet
+    setEtape(1); 
+    setMatricule(""); 
+    setNom(""); 
+    setPrenom(""); 
+    setDateNaissance("");
+    setGenre(""); 
+    setClasseId(""); 
+    setStatutAffectation("Affecté"); // 🔥 CORRECTION : Valeur par défaut cohérente
+    setAnneeScolaire(""); 
+    setTrimestre(""); 
+    setDatePaiement(""); 
+    setMontantPaye("");
+    setModePaiement(""); 
+    setDroitsExamen(false); 
+    setFraisScolaire(false);
+    setPapiersRames(false);
 
   } catch (err) {
-    console.error('Erreur:', err);
-    alert('Erreur lors de l\'enregistrement: ' + (err.response?.data?.message || err.message));
+    console.error("=== ERREUR GLOBALE ===", err);
+    console.error("Réponse serveur complète:", err.response);
+    
+    let messageErreur = "Erreur inconnue";
+    
+    if (err.response?.data?.message) {
+      messageErreur = err.response.data.message;
+    } else if (err.message) {
+      messageErreur = err.message;
+    }
+    
+    // Afficher plus de détails en développement
+    if (process.env.NODE_ENV === 'development') {
+      console.log("Détails pour debug:", {
+        status: err.response?.status,
+        statusText: err.response?.statusText,
+        headers: err.response?.headers,
+        data: err.response?.data
+      });
+    }
+    
+    alert(`Erreur lors de l'enregistrement: ${messageErreur}`);
   }
-  
-
-
-
-// Réinitialisation des champs
-
 };
-
   return (
     <div className="container-fluid mt-4 px-4">
       <div className="card shadow-sm">
@@ -305,13 +349,13 @@ setEtape(1);
                     <option value="F">Féminin</option>
                   </select>
                 </div>
-                <div className="col-md-3 mb-3">
-                  <label className="form-label">Statut d'affectation</label>
-                  <select className="form-select" value={statutAffectation} onChange={e => setStatutAffectation(e.target.value)}>
-                    <option value="affecté">Affecté</option>
-                    <option value="non affecté">Non affecté</option>
-                  </select>
-                </div>
+              <div className="col-md-3 mb-3">
+  <label className="form-label">Statut d'affectation</label>
+  <select className="form-select" value={statutAffectation} onChange={e => setStatutAffectation(e.target.value)}>
+    <option value="Affecté">Affecté</option>
+    <option value="Non affecté">Non affecté</option>
+  </select>
+</div>
                 <div className="mb-3">
                   <label className="form-label">Classe</label>
                   <select className="form-select" value={classeId} onChange={e => setClasseId(e.target.value)} required>
@@ -325,6 +369,7 @@ setEtape(1);
 
            {etape === 2 && (
   <>
+    {/* Champs de paiement */}
     <div className="mb-3">
       <label className="form-label">Année scolaire</label>
       <input
@@ -336,6 +381,7 @@ setEtape(1);
         required
       />
     </div>
+
     <div className="mb-3">
       <label className="form-label">Trimestre</label>
       <select
@@ -350,6 +396,7 @@ setEtape(1);
         <option value="T3">Troisième trimestre</option>
       </select>
     </div>
+
     <div className="mb-3">
       <label className="form-label">Date de paiement</label>
       <input
@@ -360,6 +407,7 @@ setEtape(1);
         required
       />
     </div>
+
     <div className="mb-3">
       <label className="form-label">Mode de paiement</label>
       <select
@@ -375,6 +423,7 @@ setEtape(1);
       </select>
     </div>
 
+    {/* Frais supplémentaires */}
     <div className="border rounded p-3 mb-3 bg-light">
       <h6 className="mb-3">Frais à appliquer</h6>
       <div className="mb-3 form-check">
@@ -389,6 +438,7 @@ setEtape(1);
           Frais scolaire ({FRAIS_SCOLAIRE} FCFA)
         </label>
       </div>
+
       <div className="mb-3 form-check">
         <input
           type="checkbox"
@@ -409,6 +459,7 @@ setEtape(1);
             : "(Non disponible)"}
         </label>
       </div>
+
       <div className="mb-3 form-check">
         <input
           type="checkbox"
@@ -421,18 +472,8 @@ setEtape(1);
           Papiers rames
         </label>
       </div>
-      <div className="mb-3 form-check">
-        <input
-          type="checkbox"
-          className="form-check-input"
-          id="notifierParent"
-          checked={notifierParent}
-          onChange={e => setNotifierParent(e.target.checked)}
-        />
-        <label className="form-check-label" htmlFor="notifierParent">
-          Notifier le parent du solde restant
-        </label>
-      </div>
+
+   
     </div>
 
     {/* Récapitulatif */}
@@ -446,32 +487,24 @@ setEtape(1);
         )}
         {papiersRames && <li>Papiers rames: Inclus</li>}
         <li>
-          <strong>
-            Total:{" "}
-            {calculerMontantTotal(
-              montantDuClasse,
-              fraisScolaire ? FRAIS_SCOLAIRE : 0,
-              droitsExamen ? calculerDroitsExamen(classeIdNom, droitsExamen) : 0
-            )}{" "}
-            FCFA
-          </strong>
+          <strong>Total à payer (classe uniquement): {montantDuClasse} FCFA</strong>
         </li>
+        <li>Montant payé: {montantPaye || 0} FCFA</li>
+        <li>Reste à payer: {montantDuClasse - (parseFloat(montantPaye) || 0)} FCFA</li>
       </ul>
     </div>
 
+    {/* Champs Total et Reste */}
     <div className="mb-3">
-      <label className="form-label">Montant dû (total)</label>
+      <label className="form-label">Total à payer (classe uniquement)</label>
       <input
         type="number"
         className="form-control"
-        value={calculerMontantTotal(
-          montantDuClasse,
-          fraisScolaire ? FRAIS_SCOLAIRE : 0,
-          droitsExamen ? calculerDroitsExamen(classeIdNom, droitsExamen) : 0
-        )}
+        value={montantDuClasse}
         readOnly
       />
     </div>
+
     <div className="mb-3">
       <label className="form-label">Montant payé</label>
       <input
@@ -480,48 +513,31 @@ setEtape(1);
         value={montantPaye}
         onChange={e => setMontantPaye(e.target.value)}
         min="0"
-        max={calculerMontantTotal(
-          montantDuClasse,
-          fraisScolaire ? FRAIS_SCOLAIRE : 0,
-          droitsExamen ? calculerDroitsExamen(classeIdNom, droitsExamen) : 0
-        )}
+        max={montantDuClasse}
         placeholder="Entrer le montant payé"
         required
       />
-      <small className="text-muted">
-        Maximum autorisé:{" "}
-        {calculerMontantTotal(
-          montantDuClasse,
-          fraisScolaire ? FRAIS_SCOLAIRE : 0,
-          droitsExamen ? calculerDroitsExamen(classeIdNom, droitsExamen) : 0
-        )}{" "}
-        FCFA
-      </small>
+      <small className="text-muted">Maximum autorisé: {montantDuClasse} FCFA</small>
     </div>
+
     <div className="mb-3">
       <label className="form-label">Reste à payer</label>
       <input
         type="number"
         className="form-control"
-        value={
-          calculerMontantTotal(
-            montantDuClasse,
-            fraisScolaire ? FRAIS_SCOLAIRE : 0,
-            droitsExamen ? calculerDroitsExamen(classeIdNom, droitsExamen) : 0
-          ) - (parseInt(montantPaye) || 0)
-        }
+        value={montantDuClasse - (parseFloat(montantPaye) || 0)}
         readOnly
       />
     </div>
 
+    {/* Boutons */}
     <button type="button" className="btn btn-secondary me-2" onClick={() => setEtape(1)}>
       ← Précédent
     </button>
-    <button type="submit" className="btn btn-success">
-      Valider
-    </button>
+    <button type="submit" className="btn btn-success">Valider</button>
   </>
 )}
+
 
           </form>
         </div>

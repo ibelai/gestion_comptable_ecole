@@ -8,175 +8,221 @@ const nodemailer = require("nodemailer");
 const twilio = require("twilio");
 const { verifyToken, authorizeRoles } = require("../middleware/authMiddleware");
 
-// Twilio client
-const twilioClient = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
-
-// Middleware global
-router.use(verifyToken);
-
 /**
- * Générer reçu PDF
+ * Ajouter un paiement - Version simplifiée sans notifications
  */
-function genererRecuPDF(paiement) {
-  const doc = new PDFDocument();
-  const uploadDir = path.join(__dirname, "../uploads/recus");
-  if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
-  const fichier = path.join(uploadDir, `recu_${paiement.id}.pdf`);
+router.post("/",verifyToken, authorizeRoles("admin", "comptable"), async (req, res) => {
+  console.log("=== [Paiement] Début enregistrement ===");
+  console.log("Données reçues:", JSON.stringify(req.body, null, 2));
 
-  doc.pipe(fs.createWriteStream(fichier));
-  doc.fontSize(16).text('Reçu de paiement', { align: 'center' });
-  doc.moveDown();
-  doc.fontSize(12).text(`Élève: ${paiement.nom} ${paiement.prenom}`);
-  doc.text(`Classe: ${paiement.classe_nom}`);
-  doc.text(`Montant payé: ${paiement.montant_paye} FCFA`);
-  doc.text(`Date: ${paiement.date_paiement}`);
-  doc.text(`Mode de paiement: ${paiement.mode_paiement}`);
-  doc.text(`Année scolaire: ${paiement.annee_scolaire}`);
-  doc.text(`Trimestre: ${paiement.trimestre || 'N/A'}`);
-  doc.end();
-
-  return `/uploads/recus/recu_${paiement.id}.pdf`;
-}
-
-/**
- * Envoyer un email
- */
-async function envoyerEmailParent(eleve, reste) {
-  if (!eleve.parent_email) return;
-
-  let transporter = nodemailer.createTransport({
-    service: "gmail",
-    auth: { user: process.env.MAIL_USER, pass: process.env.MAIL_PASS }
-  });
-
-  await transporter.sendMail({
-    from: `"École ABC" <${process.env.MAIL_USER}>`,
-    to: eleve.parent_email,
-    subject: "Notification paiement scolaire",
-    text: `Bonjour,
-
-Il reste ${reste} FCFA à payer pour ${eleve.nom} ${eleve.prenom} 
-(Classe: ${eleve.classe_nom}) pour l'année scolaire ${eleve.annee_scolaire}.
-
-Merci de régulariser le paiement rapidement.
-
-Cordialement,
-École ABC`,
-  });
-
-  console.log("✉ Email envoyé au parent:", eleve.parent_email);
-}
-
-/**
- * Envoyer un SMS
- */
-async function envoyerSMSParent(eleve, reste) {
-  if (!eleve.parent_tel) return;
-
-  await twilioClient.messages.create({
-    body: `École ABC : Il reste ${reste} FCFA à payer pour ${eleve.nom} ${eleve.prenom} (${eleve.classe_nom}). Merci.`,
-    from: process.env.TWILIO_PHONE,
-    to: eleve.parent_tel
-  });
-
-  console.log("📱 SMS envoyé au parent:", eleve.parent_tel);
-}
-
-/**
- * Ajouter un paiement
- */
-router.post("/", authorizeRoles("admin", "comptable"), async (req, res) => {
   try {
-    console.log("=== [Paiement] Début enregistrement ===");
-    const { eleve_id, montant_paye, annee_scolaire, mode_paiement, date_paiement, notify_email, notify_sms } = req.body;
+    const { 
+      eleve_id, 
+      montant_paye, 
+      annee_scolaire, 
+      mode_paiement, 
+      date_paiement,
+      trimestre,
+      fraisScolaire,     // boolean
+      droitsExamen,      // boolean  
+      papiersRames       // boolean
+    } = req.body;
 
-    if (!eleve_id || !montant_paye || !annee_scolaire) {
-      return res.status(400).json({ message: "Champs obligatoires manquants" });
+    // ✅ Validation des champs obligatoires
+    if (!eleve_id || montant_paye === undefined || montant_paye === null || !annee_scolaire) {
+      console.log("❌ Validation échouée - Champs manquants");
+      return res.status(400).json({ 
+        message: "Champs obligatoires manquants (eleve_id, montant_paye, annee_scolaire)"
+      });
     }
 
-    // Récup élève
-    const [[eleve]] = await db.query(
-      "SELECT e.id, e.classe_id, e.nom, e.prenom, e.parent_email, e.parent_tel, c.nom AS classe_nom " +
-      "FROM eleves e JOIN classes c ON e.classe_id = c.id WHERE e.id = ?", 
+    const montantPayeNum = parseFloat(montant_paye);
+    if (isNaN(montantPayeNum) || montantPayeNum <= 0) {
+      console.log("❌ Montant invalide:", montant_paye);
+      return res.status(400).json({ message: "Le montant payé doit être un nombre positif" });
+    }
+
+    console.log("✅ Validation initiale OK");
+
+    // ✅ Récupération des informations élève
+    const [eleveRows] = await db.query(
+      `SELECT e.id, e.classe_id, e.nom, e.prenom, 
+              c.nom AS classe_nom, e.statut_affectation
+       FROM eleves e 
+       JOIN classes c ON e.classe_id = c.id 
+       WHERE e.id = ?`, 
       [eleve_id]
     );
-    if (!eleve) return res.status(404).json({ message: "Élève introuvable" });
 
-    // Montant classe
-    const [[montantRow]] = await db.query(
-      "SELECT montant FROM montants_classes WHERE classe_id = ? AND annee_scolaire = ?",
-      [eleve.classe_id, annee_scolaire]
-    );
-    if (!montantRow) {
-      return res.status(400).json({ message: "Aucun montant défini pour la classe" });
+    if (!eleveRows || eleveRows.length === 0) {
+      console.log("❌ Élève non trouvé:", eleve_id);
+      return res.status(404).json({ message: "Élève introuvable avec l'ID: " + eleve_id });
     }
-    const montantClasse = montantRow.montant;
 
-    // Total payé
-    const [[{ total_paye }]] = await db.query(
-      "SELECT IFNULL(SUM(montant_paye),0) AS total_paye FROM paiements WHERE eleve_id = ? AND annee_scolaire = ?",
+    const eleve = eleveRows[0];
+    console.log("✅ Élève trouvé:", {
+      id: eleve.id,
+      nom: eleve.nom,
+      prenom: eleve.prenom,
+      classe: eleve.classe_nom,
+      statut: eleve.statut_affectation
+    });
+
+    // ✅ Normalisation du statut d'affectation
+    let statutRecherche = eleve.statut_affectation;
+    if (eleve.statut_affectation === 'affecté') statutRecherche = 'Affecté';
+    if (eleve.statut_affectation === 'non affecté') statutRecherche = 'Non affecté';
+
+    console.log("Statut pour recherche:", statutRecherche);
+
+    // ✅ Récupération du montant de la classe
+    let montantClasse = 0;
+    const [montantRows] = await db.query(
+      `SELECT montant FROM montants_classes 
+       WHERE classe = ? AND annee_scolaire = ? AND statut_affectation = ?`,
+      [eleve.classe_nom, annee_scolaire, statutRecherche]
+    );
+
+    if (!montantRows || montantRows.length === 0) {
+      console.log("❌ Aucun montant trouvé, essai sans statut...");
+      
+      // Essayer sans le statut d'affectation
+      const [montantRowsAlt] = await db.query(
+        `SELECT montant FROM montants_classes WHERE classe = ? AND annee_scolaire = ? LIMIT 1`,
+        [eleve.classe_nom, annee_scolaire]
+      );
+
+      if (!montantRowsAlt || montantRowsAlt.length === 0) {
+        return res.status(400).json({ 
+          message: `Aucun montant défini pour la classe ${eleve.classe_nom} pour l'année ${annee_scolaire}`
+        });
+      }
+      
+      montantClasse = parseFloat(montantRowsAlt[0].montant);
+      console.log("⚠️ Utilisation montant sans statut:", montantClasse);
+    } else {
+      montantClasse = parseFloat(montantRows[0].montant);
+      console.log("✅ Montant classe trouvé:", montantClasse);
+    }
+
+    if (isNaN(montantClasse) || montantClasse <= 0) {
+      console.log("❌ Montant classe invalide");
+      return res.status(500).json({ message: "Montant de classe invalide dans la base de données" });
+    }
+
+    // ✅ Calcul des paiements antérieurs
+    const [paiementRows] = await db.query(
+      `SELECT IFNULL(SUM(montant_paye), 0) AS total_paye 
+       FROM paiements 
+       WHERE eleve_id = ? AND annee_scolaire = ?`,
       [eleve_id, annee_scolaire]
     );
-    const reste_a_payer = montantClasse - total_paye;
-    if (montant_paye > reste_a_payer) {
-      return res.status(400).json({ message: "Paiement dépasse le montant restant" });
+
+    const totalDejaPaye = parseFloat(paiementRows[0]?.total_paye || 0);
+    const resteAPayerClasse = montantClasse - totalDejaPaye;
+
+    console.log(`Calculs: Montant classe: ${montantClasse}, Déjà payé: ${totalDejaPaye}, Reste: ${resteAPayerClasse}`);
+
+    // ✅ Validation du montant
+    if (montantPayeNum > resteAPayerClasse) {
+      console.log("❌ Paiement trop élevé");
+      return res.status(400).json({ 
+        message: `Le paiement de ${montantPayeNum} FCFA dépasse le montant restant de ${resteAPayerClasse} FCFA pour la classe`
+      });
     }
 
-    // Frais fixes
-    const montantFraisScolaire = 17500;
-    const montantDroitsExamen = (eleve.classe_nom === "3ème" || eleve.classe_id === 3) ? 3000 : (eleve.classe_nom === "Terminale" ? 6000 : 0);
+    // ✅ Calcul des frais additionnels (pour information seulement)
+    const montantFraisScolaire = fraisScolaire ? 17500 : 0;
+    const montantDroitsExamen = droitsExamen ? (
+      (eleve.classe_nom === "3ème" || eleve.classe_nom === "3EME") ? 3000 :
+      (eleve.classe_nom === "Terminale" || eleve.classe_nom === "TERMINALE") ? 6000 : 0
+    ) : 0;
 
-    // Insertion paiement
+    console.log("Frais additionnels:", { scolaire: montantFraisScolaire, examen: montantDroitsExamen });
+
+    // ✅ Insertion du paiement (version simplifiée)
     const [result] = await db.query(
       `INSERT INTO paiements 
-       (eleve_id, montant_paye, date_paiement, annee_scolaire, mode_paiement,
+       (eleve_id, montant_paye, date_paiement, annee_scolaire, mode_paiement, trimestre,
         frais_scolaire_du, frais_scolaire_paye, 
         frais_classe_du, frais_classe_paye, 
-        droit_examen_du, droit_examen_paye) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        droit_examen_du, droit_examen_paye,
+        papiers_rames) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         eleve_id,
-        montant_paye,
+        montantPayeNum,
         date_paiement || new Date().toISOString().split("T")[0],
         annee_scolaire,
         mode_paiement || "Espèces",
-        montantFraisScolaire,
-        0,
-        montantClasse,
-        total_paye + montant_paye,
-        montantDroitsExamen,
-        0
+        trimestre || null,
+        17500,                          // Frais scolaires standard
+        montantFraisScolaire,           // Montant payé pour frais scolaires
+        montantClasse,                  // Montant dû pour la classe
+        totalDejaPaye + montantPayeNum, // Total payé pour la classe (cumulé)
+        montantDroitsExamen > 0 ? montantDroitsExamen : 0, // Montant dû examen
+        montantDroitsExamen,            // Montant payé examen
+        papiersRames ? 1 : 0
       ]
     );
 
-    // Générer reçu PDF
-    const paiement = {
-      id: result.insertId,
-      nom: eleve.nom,
-      prenom: eleve.prenom,
-      classe_nom: eleve.classe_nom,
-      montant_paye,
-      date_paiement: date_paiement || new Date().toISOString().split("T")[0],
-      mode_paiement: mode_paiement || "Espèces",
-      annee_scolaire
-    };
-    const lienRecu = genererRecuPDF(paiement);
+    const paiementId = result.insertId;
+    console.log("✅ Paiement inséré avec ID:", paiementId);
 
-    // Notifier parents selon options
-    const nouveau_reste = reste_a_payer - montant_paye;
-    if (notify_email) await envoyerEmailParent({ ...eleve, annee_scolaire }, nouveau_reste);
-    if (notify_sms) await envoyerSMSParent({ ...eleve, annee_scolaire }, nouveau_reste);
+    // ✅ Génération du reçu (avec gestion d'erreur)
+    let lienRecu = null;
+    try {
+      const paiementPourRecu = {
+        id: paiementId,
+        nom: eleve.nom,
+        prenom: eleve.prenom,
+        classe_nom: eleve.classe_nom,
+        montant_paye: montantPayeNum,
+        date_paiement: date_paiement || new Date().toISOString().split("T")[0],
+        mode_paiement: mode_paiement || "Espèces",
+        annee_scolaire,
+        trimestre,
+        fraisScolaire: montantFraisScolaire,
+        droitsExamen: montantDroitsExamen,
+        papiersRames
+      };
 
+      lienRecu = genererRecuPDF(paiementPourRecu);
+      console.log("✅ Reçu généré:", lienRecu);
+    } catch (pdfError) {
+      console.error("⚠️ Erreur génération PDF (non bloquante):", pdfError.message);
+    }
+
+    // ✅ Réponse de succès
+    const nouveauReste = resteAPayerClasse - montantPayeNum;
+    console.log("✅ Paiement enregistré avec succès");
+    
     res.status(201).json({
-      message: "Paiement enregistré et notifications envoyées",
-      paiement,
+      message: "Paiement enregistré avec succès",
+      paiement: {
+        id: paiementId,
+        eleve_id,
+        montant_paye: montantPayeNum,
+        montant_classe: montantClasse,
+        total_deja_paye: totalDejaPaye + montantPayeNum,
+        reste_a_payer: nouveauReste,
+        frais_additionnels: {
+          frais_scolaire: montantFraisScolaire,
+          droits_examen: montantDroitsExamen,
+          papiers_rames: papiersRames
+        }
+      },
       recu: lienRecu
     });
 
-  } catch (err) {
-    console.error("=== [Paiement] ERREUR ===", err);
-    res.status(500).json({ message: "Erreur serveur", error: err.message });
+  } catch (globalError) {
+    console.error("=== [Paiement] ERREUR GLOBALE ===", globalError);
+    console.error("Stack:", globalError.stack);
+    
+    res.status(500).json({ 
+      message: "Erreur serveur lors de l'enregistrement du paiement", 
+      error: process.env.NODE_ENV === 'development' ? globalError.message : "Erreur interne"
+    });
   }
 });
-
 module.exports = router;

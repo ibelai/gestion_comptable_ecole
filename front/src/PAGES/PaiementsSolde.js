@@ -12,12 +12,12 @@ export default function PaiementSoldeModal({ eleveId, show, onClose }) {
   const [message, setMessage] = useState('');
   const [chargement, setChargement] = useState(false);
   const anneeScolaire = "2024-2025";
-  const API_URL = process.env.REACT_APP_API_URL;
+  const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:1000';
 
+  // Chargement des infos solde
   useEffect(() => {
-     console.log("eleveId reçu :", eleveId, "show :", show);
-  if (!eleveId || !show) return;
-    
+    if (!eleveId || !show) return;
+
     axios.get(`${API_URL}/api/eleves/${eleveId}/solde?annee_scolaire=${anneeScolaire}`, {
       headers: { Authorization: `Bearer ${token}` }
     })
@@ -30,19 +30,19 @@ export default function PaiementSoldeModal({ eleveId, show, onClose }) {
 
   const genererNumeroRecu = () => `REC${Date.now()}`;
 
+  const formatMontant = (val) => Math.round(val);
+
   const handlePaiement = async () => {
     setMessage('');
     const montantFloat = parseFloat(montant);
+
+    if (!eleve) return;
     if (isNaN(montantFloat) || montantFloat <= 0) {
       setMessage("Montant invalide");
       return;
     }
     if (montantFloat > eleve.reste_a_payer) {
       setMessage("Le montant dépasse le solde restant.");
-      return;
-    }
-    if (recu.trim().length > 20) {
-      setMessage("Le numéro de reçu est trop long.");
       return;
     }
 
@@ -54,39 +54,39 @@ export default function PaiementSoldeModal({ eleveId, show, onClose }) {
         eleve_id: eleveId,
         montant_paye: montantFloat,
         mode_paiement: modePaiement,
-        recu: numeroRecu,
         date_paiement: new Date().toISOString().split('T')[0],
         annee_scolaire: anneeScolaire,
-        description: "Versement" // 👈 ici tu peux aussi mettre "Frais scolaires", etc.
+        description: "Versement"
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
+      // Regénérer le solde après paiement
+      const updated = await axios.get(`${API_URL}/api/eleves/${eleveId}/solde?annee_scolaire=${anneeScolaire}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setEleve(updated.data);
+
       genererRecu({
-        nom: eleve.nom,
-        prenom: eleve.prenom,
-        classe: eleve.classe,
-        montant_du: eleve.montant_du || 0,
-        reste: Math.max(0, eleve.reste_a_payer - montantFloat),
+        nom: updated.data.nom,
+        prenom: updated.data.prenom,
+        classe: updated.data.classe,
+        montant_du: updated.data.montant_du,
+        reste: updated.data.reste_a_payer,
         montant: montantFloat,
         mode_paiement: modePaiement,
         date_paiement: new Date(),
         numero: numeroRecu,
-        totalPaye: (eleve.total_paye || 0) + montantFloat
+        totalPaye: updated.data.total_paye
       });
 
       setMontant('');
       setRecu('');
       setMessage("Paiement effectué avec succès !");
 
-      const updated = await axios.get(`${API_URL}/api/eleves/${eleveId}/solde?annee_scolaire=${anneeScolaire}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setEleve(updated.data);
-
       setTimeout(() => {
         setMessage('');
-        if (onClose) onClose(); // Ferme la modale après succès
+        if (onClose) onClose();
       }, 1500);
 
     } catch (err) {
@@ -96,14 +96,11 @@ export default function PaiementSoldeModal({ eleveId, show, onClose }) {
       setChargement(false);
     }
   };
-const formatMontant = (val) => {
-  return Math.round(val); // ou Math.floor / toFixed(0)
-};
 
   const genererRecu = (paiement) => {
     const doc = new jsPDF();
     const img = new Image();
-    img.src = '/logo.png';
+    img.src = '/logo.jpg'
 
     img.onload = () => {
       doc.addImage(img, 'PNG', 10, 10, 30, 30);
@@ -123,24 +120,23 @@ const formatMontant = (val) => {
       y += 8;
       doc.text(`Montant restant : ${paiement.reste} FCFA`, 10, y);
       y += 8;
-      doc.text(`Date : ${new Date(paiement.date_paiement).toLocaleDateString('fr-FR')}`, 10, y);
+      doc.text(`Date : ${paiement.date_paiement.toLocaleDateString('fr-FR')}`, 10, y);
       y += 8;
       doc.text(`Reçu N° : ${paiement.numero}`, 10, y);
 
-     doc.autoTable({
-  startY: y + 15,
-  head: [['Description', 'Montant']],
-  body: [
-    ['Montant dû', `${formatMontant(paiement.montant_du)} FCFA`],
-    ['Déjà payé', `${formatMontant(paiement.totalPaye - paiement.montant)} FCFA`],
-    ['Paiement actuel', `${formatMontant(paiement.montant)} FCFA`],
-    ['Reste à payer', `${formatMontant(paiement.reste)} FCFA`],
-  ],
-  theme: 'grid',
-  styles: { fontSize: 11 },
-  headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
-});
-
+      doc.autoTable({
+        startY: y + 15,
+        head: [['Description', 'Montant']],
+        body: [
+          ['Montant dû', `${formatMontant(paiement.montant_du)} FCFA`],
+          ['Déjà payé', `${formatMontant(paiement.totalPaye - paiement.montant)} FCFA`],
+          ['Paiement actuel', `${formatMontant(paiement.montant)} FCFA`],
+          ['Reste à payer', `${formatMontant(paiement.reste)} FCFA`],
+        ],
+        theme: 'grid',
+        styles: { fontSize: 11 },
+        headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
+      });
 
       const pageHeight = doc.internal.pageSize.height;
       doc.setFontSize(10);
@@ -157,7 +153,7 @@ const formatMontant = (val) => {
   if (!show) return null;
 
   return (
-    <div className="modal show fade d-block" tabIndex="-1" role="dialog" aria-modal="true" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+    <div className="modal show fade d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
       <div className="modal-dialog">
         <div className="modal-content p-3">
           <div className="modal-header">
@@ -165,30 +161,24 @@ const formatMontant = (val) => {
             <button type="button" className="btn-close" onClick={onClose}></button>
           </div>
           <div className="modal-body">
-            {!eleve ? (
-              <div>Chargement...</div>
-            ) : (
+            {!eleve ? <div>Chargement...</div> : (
               <>
                 <h6><strong>{eleve.nom} {eleve.prenom}</strong> — {eleve.classe}</h6>
                 <p><strong>Montant dû :</strong> {eleve.montant_du} FCFA</p>
                 <p><strong>Déjà payé :</strong> {eleve.total_paye} FCFA</p>
                 <p><strong>Reste à payer :</strong> {eleve.reste_a_payer} FCFA</p>
 
-                {/* ✅ Cases des frais spécifiques */}
-                <div className="mb-3">
-                  <label><strong>Frais spécifiques :</strong></label>
-                  <div className="form-check">
-                    <input type="checkbox" className="form-check-input" checked={eleve?.frais_scolaires} readOnly />
-                    <label className="form-check-label">Frais scolaires</label>
-                  </div>
-                  <div className="form-check">
-                    <input type="checkbox" className="form-check-input" checked={eleve?.droit_examen} readOnly />
-                    <label className="form-check-label">Droit examen</label>
-                  </div>
-                  <div className="form-check">
-                    <input type="checkbox" className="form-check-input" checked={eleve?.papiers} readOnly />
-                    <label className="form-check-label">Papiers/rames</label>
-                  </div>
+                <div className="form-check">
+                  <input type="checkbox" className="form-check-input" checked={eleve.frais_scolaires} readOnly />
+                  <label className="form-check-label">Frais scolaires</label>
+                </div>
+                <div className="form-check">
+                  <input type="checkbox" className="form-check-input" checked={eleve.droit_examen} readOnly />
+                  <label className="form-check-label">Droit examen</label>
+                </div>
+                <div className="form-check">
+                  <input type="checkbox" className="form-check-input" checked={eleve.papiers} readOnly />
+                  <label className="form-check-label">Papiers/rames</label>
                 </div>
 
                 {eleve.reste_a_payer <= 0 && (

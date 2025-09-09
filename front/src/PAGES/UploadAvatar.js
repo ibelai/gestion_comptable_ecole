@@ -6,7 +6,7 @@ const UploadAvatar = ({ token, onAvatarUpdated }) => {
   const [error, setError] = useState("");
 
   const handleFileChange = (e) => setFile(e.target.files[0]);
-   const API_URL = process.env.REACT_APP_API_URL ;
+   const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:1000' ;
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!file) {
