@@ -6,7 +6,7 @@ import 'jspdf-autotable';
 export default function ElevesList() {
   const [etape, setEtape] = useState(1);
   const token = localStorage.getItem('token');
-  const API_URL =process.env.REACT_APP_API_URL ||  'http://localhost:1000';
+  const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:1000';
 
   // Champs élève
   const [matricule, setMatricule] = useState('');
@@ -15,9 +15,10 @@ export default function ElevesList() {
   const [dateNaissance, setDateNaissance] = useState('');
   const [genre, setGenre] = useState('');
   const [classeId, setClasseId] = useState('');
- const [statutAffectation, setStatutAffectation] = useState('Affecté');
-// Liste des élèves (local)
-const [eleves, setEleves] = useState([]);
+  const [statutAffectation, setStatutAffectation] = useState('Affecté');
+
+  // Liste des élèves (local)
+  const [eleves, setEleves] = useState([]);
 
   // Champs paiement
   const [anneeScolaire, setAnneeScolaire] = useState('');
@@ -26,36 +27,37 @@ const [eleves, setEleves] = useState([]);
   const [modePaiement, setModePaiement] = useState('');
   const [montantPaye, setMontantPaye] = useState('');
 
-  // Nouvelles cases à cocher
+  // Frais supplémentaires
   const [droitsExamen, setDroitsExamen] = useState(false);
   const [fraisScolaire, setFraisScolaire] = useState(false);
   const [papiersRames, setPapiersRames] = useState(false);
-  
 
   // Données classes
   const [classes, setClasses] = useState([]);
   const [montantsClasses, setMontantsClasses] = useState([]);
   const [montantDuClasse, setMontantDuClasse] = useState(0);
-  
+
   const classeIdNom = classes.find(c => c.id === parseInt(classeId))?.nom;
   const FRAIS_SCOLAIRE = 17500;
-const [matriculesExistants, setMatriculesExistants] = useState([]);
+  const [matriculesExistants, setMatriculesExistants] = useState([]);
 
-useEffect(() => {
-  const fetchMatricules = async () => {
-    try {
-      const res = await axios.get(`${API_URL}/api/eleves`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      const matrics = res.data.map(e => e.matricule);
-      setMatriculesExistants(matrics);
-    } catch (err) {
-      console.error("Erreur récupération matricules:", err);
-    }
-  };
-  fetchMatricules();
-}, [API_URL, token]);
+  // 🔹 Récupération des matricules existants
+  useEffect(() => {
+    const fetchMatricules = async () => {
+      try {
+        const res = await axios.get(`${API_URL}/api/eleves`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const matrics = res.data.map(e => e.matricule.toLowerCase().trim());
+        setMatriculesExistants(matrics);
+      } catch (err) {
+        console.error("Erreur récupération matricules:", err);
+      }
+    };
+    fetchMatricules();
+  }, [API_URL, token]);
 
+  // 🔹 Récupération classes et montants
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -72,25 +74,32 @@ useEffect(() => {
     fetchData();
   }, []);
 
+  // 🔹 Calcul montant de la classe
   useEffect(() => {
-  if (!classeId || !anneeScolaire || !statutAffectation) {
-    setMontantDuClasse(0);
-    return;
-  }
-  const classeNom = classes.find(c => c.id === parseInt(classeId))?.nom;
-  const montant = montantsClasses.find(m =>
-    m.classe === classeNom &&
-    m.annee_scolaire === anneeScolaire &&
-    m.statut_affectation === statutAffectation // Pas de toLowerCase() ici
-  );
-  setMontantDuClasse(
-    montant ? parseInt(montant.montant.replace(/\s/g, ''), 10) : 0
-  );
-}, [classeId, anneeScolaire, statutAffectation, classes, montantsClasses]);
+    if (!classeId || !anneeScolaire || !statutAffectation) {
+      setMontantDuClasse(0);
+      return;
+    }
+    const classeNom = classes.find(c => c.id === parseInt(classeId))?.nom;
+    const montant = montantsClasses.find(m =>
+      m.classe === classeNom &&
+      m.annee_scolaire === anneeScolaire &&
+      m.statut_affectation === statutAffectation
+    );
+    setMontantDuClasse(
+      montant ? parseInt(montant.montant.toString().replace(/\s/g, ''), 10) : 0
+    );
+  }, [classeId, anneeScolaire, statutAffectation, classes, montantsClasses]);
 
+  // 🔹 Calcul droits examen
+  const calculerDroitsExamen = (classeNom, droitsExamen) => {
+    if (!droitsExamen) return 0;
+    if (classeNom === "3ème" || classeNom === "3EME") return 3000;
+    if (classeNom === "Terminale" || classeNom === "TERMINALE") return 6000;
+    return 0;
+  };
 
-  
-
+  // 🔹 Génération reçu PDF
   const genererRecu = (paiement) => {
     const doc = new jsPDF();
     const img = new Image();
@@ -137,180 +146,129 @@ useEffect(() => {
     img.onerror = () => alert("Erreur : impossible de charger le logo.");
   };
 
-const calculerDroitsExamen = (classeNom, droitsExamen) => {
-  if (!droitsExamen) return 0;
-  if (classeNom === "3ème" || classeNom === "3EME") return 3000;
-  if (classeNom === "Terminale" || classeNom === "TERMINALE") return 6000;
-  return 0;
-};
+  // 🔹 Handle submit
+  const handleSubmit = async (e) => {
+    e.preventDefault();
 
-const calculerFraisScolaire = (fraisScolaire) => fraisScolaire ? 17500 : 0;
+    // --- Étape 1 : Infos élève
+    if (etape === 1) {
+      if (!matricule || !nom || !prenom || !classeId) {
+        alert("Veuillez remplir les champs obligatoires");
+        return;
+      }
 
-const calculerMontantTotal = (montantClasse, frais, droits) =>
-  montantClasse + frais + droits;
-// --- useEffect pour calculer le montant de la classe ---
-// Dans votre useEffect pour le calcul du montant de classe
-useEffect(() => {
-  if (!classeId || !anneeScolaire || !statutAffectation) {
-    setMontantDuClasse(0);
-    return;
-  }
-  
-  const classeNom = classes.find(c => c.id === parseInt(classeId))?.nom;
-  
-  // 🔥 CORRECTION : Chercher avec le statut exact, sans toLowerCase()
-  const montant = montantsClasses.find(m =>
-    m.classe === classeNom &&
-    m.annee_scolaire === anneeScolaire &&
-    m.statut_affectation === statutAffectation // Comparaison directe
-  );
+      // Vérification matricule frontend
+      if (matriculesExistants.includes(matricule.trim().toLowerCase())) {
+        alert(`Le matricule "${matricule}" existe déjà.`);
+        return;
+      }
 
-  console.log("Recherche montant pour:", {
-    classe: classeNom,
-    annee: anneeScolaire,
-    statut: statutAffectation,
-    trouve: !!montant,
-    montant: montant?.montant
-  });
-
-  const montantNet = montant ? parseInt(montant.montant.toString().replace(/\s/g, ''), 10) : 0;
-  setMontantDuClasse(montantNet);
-}, [classeId, anneeScolaire, statutAffectation, classes, montantsClasses]);
-
-// Dans votre handleSubmit - Améliorer les logs et validation
-const handleSubmit = async (e) => {
-  e.preventDefault();
-
-  // --- Étape 1 : Infos de base de l'élève ---
-  if (etape === 1) {
-    if (!matricule || !nom || !prenom || !classeId) {
-      alert("Veuillez remplir les champs obligatoires");
+      setEtape(2);
       return;
     }
 
-    // Vérification frontend du matricule
-    if (matriculesExistants.includes(matricule.trim())) {
-      alert(`Le matricule "${matricule}" existe déjà. Veuillez en saisir un autre.`);
+    // --- Étape 2 : Infos paiement
+    if (!datePaiement || !anneeScolaire || !modePaiement || !trimestre) {
+      alert("Veuillez remplir tous les champs de paiement");
       return;
     }
 
-    setEtape(2);
-    return;
-  }
-
-  // --- Étape 2 : Infos de paiement ---
-  if (!datePaiement || !anneeScolaire || !modePaiement || !trimestre) {
-    alert("Veuillez remplir tous les champs de paiement");
-    return;
-  }
-
-  if (montantDuClasse <= 0) {
-    alert(`Aucun montant configuré pour cette classe (${classes.find(c => c.id === parseInt(classeId))?.nom}) avec le statut "${statutAffectation}" pour l'année ${anneeScolaire}. Contactez l'administrateur.`);
-    return;
-  }
-
-  const classeNom = classes.find(c => c.id === parseInt(classeId))?.nom || '';
-  const montantPayeNum = Number(montantPaye) || 0;
-
-  if (montantPayeNum <= 0) {
-    alert("Le montant payé doit être supérieur à 0");
-    return;
-  }
-
-  // Calcul total avec frais supplémentaires
-  const frais = fraisScolaire ? 17500 : 0;
-  const droits = calculerDroitsExamen(classeNom, droitsExamen);
-  const totalAPayer = montantDuClasse ;
-
-  if (montantPayeNum > totalAPayer) {
-    alert(`Le montant payé (${montantPayeNum} FCFA) ne peut pas dépasser le total à payer (${totalAPayer} FCFA)`);
-    return;
-  }
-
-  try {
-    // 🔹 Création élève
-    const eleveData = {
-      nom: nom.trim(),
-      prenom: prenom.trim(),
-      matricule: matricule.trim(),
-      classe_id: parseInt(classeId),
-      statut_affectation: statutAffectation,
-      date_naissance: dateNaissance || null,
-      genre: genre || null,
-      trimestre,
-      annee_scolaire: anneeScolaire.trim()
-    };
-
-    const resEleve = await axios.post(`${API_URL}/api/eleves`, eleveData, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-
-    setEleves(prev => [...prev, resEleve.data]);
-    setMatriculesExistants(prev => [...prev, matricule.trim()]); // Ajouter le matricule à la liste
-
-    // 🔹 Création paiement
-    const paiementData = {
-      eleve_id: resEleve.data.id,
-      montant_paye: montantPayeNum,
-      date_paiement: datePaiement,
-      annee_scolaire: anneeScolaire.trim(),
-      mode_paiement: modePaiement,
-      trimestre,
-      fraisScolaire,
-      droitsExamen,
-      papiersRames
-    };
-
-    await axios.post(`${API_URL}/api/paiements`, paiementData, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-
-    // 🔹 Générer reçu
-    genererRecu({
-      matricule,
-      nom,
-      prenom,
-      classe: classeNom,
-      anneeScolaire,
-      trimestre,
-      totalPaye: montantPayeNum,
-      reste: totalAPayer - montantPayeNum,
-      droitsExamen: droits,
-      fraisScolaire: frais,
-      papiersRames,
-      date: datePaiement,
-      numero: `REC-${Date.now()}`
-    });
-
-    alert("Élève et paiement enregistrés avec succès");
-
-    // 🔹 Reset complet
-    setEtape(1);
-    setMatricule(""); 
-    setNom(""); 
-    setPrenom(""); 
-    setDateNaissance(""); 
-    setGenre(""); 
-    setClasseId(""); 
-    setStatutAffectation("Affecté"); 
-    setAnneeScolaire(""); 
-    setTrimestre(""); 
-    setDatePaiement(""); 
-    setMontantPaye(""); 
-    setModePaiement(""); 
-    setDroitsExamen(false); 
-    setFraisScolaire(false); 
-    setPapiersRames(false);
-
-  } catch (err) {
-    if (err.response) {
-      alert(err.response.data.message || `Erreur serveur (${err.response.status})`);
-    } else {
-      alert(`Erreur inconnue : ${err.message}`);
+    if (montantDuClasse <= 0) {
+      alert(`Aucun montant configuré pour cette classe. Contactez l'administrateur.`);
+      return;
     }
-  }
-};
 
+    const classeNom = classes.find(c => c.id === parseInt(classeId))?.nom || '';
+    const montantPayeNum = Number(montantPaye) || 0;
+
+    if (montantPayeNum <= 0) {
+      alert("Le montant payé doit être supérieur à 0");
+      return;
+    }
+
+    const frais = fraisScolaire ? FRAIS_SCOLAIRE : 0;
+    const droits = calculerDroitsExamen(classeNom, droitsExamen);
+    const totalAPayer = montantDuClasse + frais + droits;
+
+    if (montantPayeNum > totalAPayer) {
+      alert(`Le montant payé (${montantPayeNum} FCFA) ne peut pas dépasser le total à payer (${totalAPayer} FCFA)`);
+      return;
+    }
+
+    try {
+      // 🔹 Création élève
+      const eleveData = {
+        nom: nom.trim(),
+        prenom: prenom.trim(),
+        matricule: matricule.trim(),
+        classe_id: parseInt(classeId),
+        statut_affectation: statutAffectation,
+        date_naissance: dateNaissance || null,
+        genre: genre || null,
+        trimestre,
+        annee_scolaire: anneeScolaire.trim()
+      };
+
+      const resEleve = await axios.post(`${API_URL}/api/eleves`, eleveData, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      setEleves(prev => [...prev, resEleve.data]);
+      setMatriculesExistants(prev => [...prev, matricule.trim().toLowerCase()]);
+
+      // 🔹 Création paiement
+      const paiementData = {
+        eleve_id: resEleve.data.id,
+        montant_paye: montantPayeNum,
+        date_paiement: datePaiement,
+        annee_scolaire: anneeScolaire.trim(),
+        mode_paiement: modePaiement,
+        trimestre,
+        fraisScolaire,
+        droitsExamen,
+        papiersRames
+      };
+
+      await axios.post(`${API_URL}/api/paiements`, paiementData, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      // 🔹 Générer reçu
+      genererRecu({
+        matricule,
+        nom,
+        prenom,
+        classe: classeNom,
+        anneeScolaire,
+        trimestre,
+        totalPaye: montantPayeNum,
+        reste: totalAPayer - montantPayeNum,
+        droitsExamen: droits,
+        fraisScolaire: frais,
+        papiersRames,
+        date: datePaiement,
+        numero: `REC-${Date.now()}`
+      });
+
+      alert("Élève et paiement enregistrés avec succès");
+
+      // 🔹 Reset complet
+      setEtape(1);
+      setMatricule(""); setNom(""); setPrenom(""); setDateNaissance(""); setGenre("");
+      setClasseId(""); setStatutAffectation("Affecté"); setAnneeScolaire(""); setTrimestre("");
+      setDatePaiement(""); setMontantPaye(""); setModePaiement(""); setDroitsExamen(false);
+      setFraisScolaire(false); setPapiersRames(false);
+
+    } catch (err) {
+      if (err.response) {
+        alert(err.response.data.message || `Erreur serveur (${err.response.status})`);
+      } else {
+        alert(`Erreur inconnue : ${err.message}`);
+      }
+    }
+  };
+
+  // 🔹 Render
   return (
     <div className="container-fluid mt-4 px-4">
       <div className="card shadow-sm">
@@ -320,7 +278,7 @@ const handleSubmit = async (e) => {
         <div className="card-body">
           <form onSubmit={handleSubmit}>
             {etape === 1 && (
-              <>
+                           <>
                 <div className="mb-3">
                   <label className="form-label">Matricule</label>
                   <input type="text" className="form-control" value={matricule} onChange={e => setMatricule(e.target.value)} required />
@@ -365,8 +323,10 @@ const handleSubmit = async (e) => {
               </>
             )}
 
-           {etape === 2 && (
-  <>
+            
+
+            {etape === 2 && (
+               <>
     {/* Champs de paiement */}
     <div className="mb-3">
       <label className="form-label">Année scolaire</label>
@@ -535,11 +495,40 @@ const handleSubmit = async (e) => {
     <button type="submit" className="btn btn-success">Valider</button>
   </>
 )}
+        
 
-
+            <button type="submit" className="btn btn-success mt-3">
+              {etape === 1 ? "Suivant" : "Enregistrer & Générer Reçu"}
+            </button>
           </form>
         </div>
       </div>
+
+      <hr className="my-4" />
+
+      <h5>Liste des élèves</h5>
+      <table className="table table-striped table-bordered">
+        <thead>
+          <tr>
+            <th>Matricule</th>
+            <th>Nom</th>
+            <th>Prénom</th>
+            <th>Classe</th>
+            <th>Année scolaire</th>
+          </tr>
+        </thead>
+        <tbody>
+          {eleves.map(e => (
+            <tr key={e.id}>
+              <td>{e.matricule}</td>
+              <td>{e.nom}</td>
+              <td>{e.prenom}</td>
+              <td>{classes.find(c => c.id === e.classe_id)?.nom}</td>
+              <td>{e.annee_scolaire}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }

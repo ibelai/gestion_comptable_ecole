@@ -51,6 +51,20 @@ router.get("/avec-montants", verifyToken, async (req, res) => {
   }
 });
 
+// Vérification matricule unique
+router.get("/check-matricule/:matricule", verifyToken, async (req, res) => {
+  try {
+    const { matricule } = req.params;
+    const [existingEleve] = await db.query(
+      "SELECT id FROM eleves WHERE LOWER(TRIM(matricule)) = ?",
+      [matricule.trim().toLowerCase()]
+    );
+    res.json({ exists: existingEleve.length > 0 });
+  } catch (err) {
+    console.error("Erreur vérification matricule:", err);
+    res.status(500).json({ message: "Erreur serveur" });
+  }
+});
 
 // =============================
 // 📌 Années scolaires existantes
@@ -147,10 +161,24 @@ router.get("/:eleveId/solde", verifyToken, async (req, res) => {
 // =============================
 // Dans votre route POST /api/eleves, modifiez cette partie :
 
+// =============================
+// 📌 Création d’un élève
+// =============================
 router.post("/", verifyToken, authorizeRoles("admin", "comptable"), async (req, res) => {
   try {
-    const { nom, prenom, date_naissance, genre, statut_affectation, classe_id, trimestre, matricule, annee_scolaire } = req.body;
+    const {
+      nom,
+      prenom,
+      date_naissance,
+      genre,
+      statut_affectation,
+      classe_id,
+      trimestre,
+      matricule,
+      annee_scolaire
+    } = req.body;
 
+    // Vérification des champs obligatoires
     if (!nom || !prenom || !classe_id || !trimestre || !matricule || !annee_scolaire) {
       return res.status(400).json({ 
         message: "Champs obligatoires manquants", 
@@ -158,19 +186,26 @@ router.post("/", verifyToken, authorizeRoles("admin", "comptable"), async (req, 
       });
     }
 
-    // 🔥 CORRECTION : Fonction pour convertir le trimestre
+    // 🔥 Fonction pour convertir le trimestre
     const convertirTrimestre = (t) => {
-      if (typeof t === 'number') return t; // Déjà un nombre
-      switch(t) {
+      if (typeof t === 'number') return t;
+      switch(t.toString().toUpperCase()) {
         case "T1": return 1;
         case "T2": return 2;
         case "T3": return 3;
-        default: return parseInt(t) || 1; // Fallback
+        default: return parseInt(t) || 1;
       }
     };
 
-    // Vérification matricule unique
-    const [existingEleve] = await db.query("SELECT id FROM eleves WHERE matricule = ?", [matricule]);
+    // 🔥 Vérification matricule unique (trim + lowercase)
+    const matriculeNettoye = matricule.trim().toLowerCase();
+    console.log("Vérification matricule :", matriculeNettoye);
+
+    const [existingEleve] = await db.query(
+      "SELECT id FROM eleves WHERE LOWER(TRIM(matricule)) = ?",
+      [matriculeNettoye]
+    );
+
     if (existingEleve.length > 0) {
       return res.status(400).json({ message: "Matricule déjà existant" });
     }
@@ -181,9 +216,10 @@ router.post("/", verifyToken, authorizeRoles("admin", "comptable"), async (req, 
       return res.status(400).json({ message: "Classe introuvable" });
     }
 
-    // Insertion avec conversion du trimestre
+    // Insertion élève
     const [result] = await db.query(`
-      INSERT INTO eleves (nom, prenom, date_naissance, genre, statut_affectation, classe_id, trimestre, matricule, annee_scolaire)
+      INSERT INTO eleves 
+      (nom, prenom, date_naissance, genre, statut_affectation, classe_id, trimestre, matricule, annee_scolaire)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
       nom.trim(),
@@ -192,12 +228,12 @@ router.post("/", verifyToken, authorizeRoles("admin", "comptable"), async (req, 
       genre || null,
       statut_affectation || "affecté",
       parseInt(classe_id),
-      convertirTrimestre(trimestre), // 🔥 CORRECTION ICI
+      convertirTrimestre(trimestre),
       matricule.trim(),
       annee_scolaire.trim()
     ]);
 
-    // 🔥 AJOUT MANQUANT : Récupérer l'élève complet avec JOIN sur classe
+    // 🔥 Récupérer l'élève complet
     const [[newEleve]] = await db.query(`
       SELECT e.id, e.nom, e.prenom, e.matricule, e.date_naissance, e.genre,
              e.trimestre, e.statut_affectation, e.annee_scolaire,
@@ -212,40 +248,6 @@ router.post("/", verifyToken, authorizeRoles("admin", "comptable"), async (req, 
   } catch (err) {
     console.error("Erreur création élève:", err);
     res.status(500).json({ message: "Erreur lors de la création de l'élève", error: err.message });
-  }
-});// =============================
-// 📌 Modification d’un élève
-// =============================
-router.put("/:id", verifyToken, authorizeRoles("admin","comptable"), async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { nom, prenom, date_naissance, genre, statut_affectation, classe_id, trimestre, matricule, annee_scolaire } = req.body;
-    
-    if (!nom || !prenom || !classe_id || !trimestre || !matricule || !annee_scolaire) {
-      return res.status(400).json({ message: "Champs obligatoires manquants" });
-    }
-
-    // Vérification matricule unique
-    const [exist] = await db.query("SELECT id FROM eleves WHERE matricule = ? AND id != ?", [matricule, id]);
-    if (exist.length > 0) {
-      return res.status(400).json({ message: "Matricule déjà utilisé par un autre élève" });
-    }
-
-    const [result] = await db.query(`
-      UPDATE eleves
-      SET nom=?, prenom=?, date_naissance=?, genre=?, statut_affectation=?, classe_id=?, trimestre=?, matricule=?, annee_scolaire=?
-      WHERE id=?
-    `, [nom, prenom, date_naissance||null, genre||null, statut_affectation||'affecté', classe_id, trimestre, matricule, annee_scolaire, id]);
-
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ message: "Élève non trouvé" });
-    }
-    
-    res.json({ message: "Élève mis à jour avec succès" });
-
-  } catch (err) {
-    console.error("Erreur lors de la modification:", err);
-    res.status(500).json({ message: "Erreur serveur", error: err.message });
   }
 });
 

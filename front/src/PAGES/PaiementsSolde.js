@@ -12,7 +12,7 @@ export default function PaiementSoldeModal({ eleveId, show, onClose }) {
   const [message, setMessage] = useState('');
   const [chargement, setChargement] = useState(false);
   const anneeScolaire = "2024-2025";
-  const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:1000';
+  const API_URL =process.env.REACT_APP_API_URL ||  'http://localhost:1000';
 
   // Chargement des infos solde
   useEffect(() => {
@@ -98,57 +98,44 @@ export default function PaiementSoldeModal({ eleveId, show, onClose }) {
   };
 
   const genererRecu = (paiement) => {
-    const doc = new jsPDF();
-    const img = new Image();
-    img.src = '/logo.jpg'
+  const doc = new jsPDF();
+  doc.setFontSize(14);
+  doc.text("Reçu de Paiement", 105, 20, { align: "center" });
+  doc.setFontSize(11);
 
-    img.onload = () => {
-      doc.addImage(img, 'PNG', 10, 10, 30, 30);
-      doc.setFontSize(16);
-      doc.setFont("helvetica", "bold");
-      doc.text("GROUPE SCOLAIRE LONNY-ROSE", 105, 20, null, null, 'center');
-      doc.setFontSize(12);
-      doc.setFont("helvetica", "normal");
-      doc.text("Reçu de paiement", 105, 30, null, null, 'center');
+  let y = 40;
+  doc.text(`Reçu N°: ${paiement.numero}`, 14, y);
+  doc.text(`Nom: ${paiement.nom} ${paiement.prenom}`, 14, y + 6);
+  doc.text(`Classe: ${paiement.classe}`, 14, y + 12);
+  doc.text(`Date: ${new Date(paiement.date_paiement).toLocaleDateString()}`, 14, y + 18);
+  doc.text(`Mode de paiement: ${paiement.mode_paiement}`, 14, y + 24);
 
-      let y = 50;
-      doc.text(`Nom : ${paiement.nom} ${paiement.prenom}`, 10, y);
-      y += 8;
-      doc.text(`Classe : ${paiement.classe}`, 10, y);
-      y += 8;
-      doc.text(`Montant dû : ${paiement.montant_du} FCFA`, 10, y);
-      y += 8;
-      doc.text(`Montant restant : ${paiement.reste} FCFA`, 10, y);
-      y += 8;
-      doc.text(`Date : ${paiement.date_paiement.toLocaleDateString('fr-FR')}`, 10, y);
-      y += 8;
-      doc.text(`Reçu N° : ${paiement.numero}`, 10, y);
+  // corps du tableau
+  const tableBody = [
+    ['Montant dû', `${formatMontant(paiement.montant_du)} FCFA`],
+    ['Déjà payé', `${formatMontant(paiement.totalPaye - paiement.montant)} FCFA`],
+    ['Paiement actuel', `${formatMontant(paiement.montant)} FCFA`],
+    ['Reste à payer', `${formatMontant(paiement.reste)} FCFA`],
+    ['Frais scolaires', paiement.fraisScolaires ? 'OK' : '❌'],
+    ['Papiers rames', paiement.papiers ? 'OK' : '❌'],
+  ];
 
-      doc.autoTable({
-        startY: y + 15,
-        head: [['Description', 'Montant']],
-        body: [
-          ['Montant dû', `${formatMontant(paiement.montant_du)} FCFA`],
-          ['Déjà payé', `${formatMontant(paiement.totalPaye - paiement.montant)} FCFA`],
-          ['Paiement actuel', `${formatMontant(paiement.montant)} FCFA`],
-          ['Reste à payer', `${formatMontant(paiement.reste)} FCFA`],
-        ],
-        theme: 'grid',
-        styles: { fontSize: 11 },
-        headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
-      });
+  // 👉 Ajouter droit examen seulement pour Terminale et 3ème
+  if (paiement.classe === "Terminale" || paiement.classe === "3ème") {
+    tableBody.push(['Droit examen', paiement.droitExamen ? 'OK' : '❌']);
+  }
 
-      const pageHeight = doc.internal.pageSize.height;
-      doc.setFontSize(10);
-      doc.text('Merci pour votre paiement.', 10, pageHeight - 20);
-      doc.text('Signature:', 150, pageHeight - 20);
-      doc.line(150, pageHeight - 18, 190, pageHeight - 18);
+  doc.autoTable({
+    startY: y + 30,
+    head: [['Description', 'Montant / Statut']],
+    body: tableBody,
+    theme: 'grid',
+    styles: { fontSize: 11 },
+    headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
+  });
 
-      doc.save(`recu-${paiement.nom}-${paiement.numero}.pdf`);
-    };
-
-    img.onerror = () => alert("Erreur : impossible de charger le logo.");
-  };
+  doc.save(`Recu_${paiement.nom}_${paiement.prenom}_${paiement.numero}.pdf`);
+};
 
   if (!show) return null;
 
